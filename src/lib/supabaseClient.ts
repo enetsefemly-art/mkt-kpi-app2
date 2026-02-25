@@ -3,4 +3,8 @@ import { getPublicEnv } from './env';
 
 const { url, key } = getPublicEnv();
 
-export const supabase = createClient(url, key);
+// Fallback to prevent crash if env vars are missing
+const safeUrl = url || 'https://placeholder.supabase.co';
+const safeKey = key || 'placeholder';
+
+export const supabase = createClient(safeUrl, safeKey);

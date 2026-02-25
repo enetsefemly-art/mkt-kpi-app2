@@ -3,9 +3,8 @@ export function getPublicEnv() {
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
-    throw new Error(
-      "Missing Supabase environment variables. Please check your .env file or secrets configuration."
-    );
+    console.warn("Missing Supabase environment variables. App may not function correctly.");
+    return { url: "", key: "" };
   }
 
   return { url, key };
