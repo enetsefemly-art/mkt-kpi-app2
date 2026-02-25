@@ -1,0 +1,5 @@
+{
+  "name": "KPI App (Supabase)",
+  "description": "React application with Supabase integration",
+  "requestFramePermissions": []
+}
