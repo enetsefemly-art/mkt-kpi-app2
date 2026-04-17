@@ -1,34 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithPassword, getSession } from '../../lib/authClient';
+import AppSubmitButton from '../../components/app-state/AppSubmitButton';
+import { isSupabaseConfigured } from '../../lib/supabaseClient';
+import { formatError } from '../../lib/errorUtils';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables.');
+      return;
+    }
+
     getSession().then((session) => {
       if (session) {
         navigate('/app/dashboard', { replace: true });
       }
+    }).catch((err) => {
+      console.error("Session fetch error:", err);
+      setError(formatError(err, "Failed to connect to Supabase."));
     });
   }, [navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleLogin = async () => {
+    console.log("login clicked");
+    if (!isSupabaseConfigured) {
+      setLastError('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables.');
+      return;
+    }
+    
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setError(null);
+    setLastError(null);
 
     try {
       await signInWithPassword(email, password);
+      console.log("login success");
       navigate('/app/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+      console.error(err);
+      setLastError(formatError(err, 'Failed to sign in'));
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -40,10 +61,15 @@ export default function LoginPage() {
             Sign in to your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <div className="mt-8 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded text-sm">
               {error}
+            </div>
+          )}
+          {lastError && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded text-sm">
+              {lastError}
             </div>
           )}
           <div className="rounded-md shadow-sm -space-y-px">
@@ -70,15 +96,17 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
+            <AppSubmitButton
+              label="Sign in"
+              loadingLabel="Signing in..."
+              isLoading={isSubmitting}
+              className="w-full"
+              disabled={!isSupabaseConfigured}
+              onClick={handleLogin}
+              type="button"
+            />
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

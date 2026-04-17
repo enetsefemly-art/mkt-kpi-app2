@@ -4,8 +4,8 @@ export function getPublicEnv() {
 
   if (!url || !key) {
     console.warn("Missing Supabase environment variables. App may not function correctly.");
-    return { url: "", key: "" };
+    return { url: "", key: "", isConfigured: false };
   }
 
-  return { url, key };
+  return { url, key, isConfigured: true };
 }

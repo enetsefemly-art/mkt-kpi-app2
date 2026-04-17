@@ -1,20 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSession, signOut } from '../../lib/authClient';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkSession = async () => {
-      const session = await getSession();
-      if (!session) {
+      try {
+        const session = await getSession();
+        if (!session) {
+          navigate('/login', { replace: true });
+        } else {
+          setUserEmail(session.user.email || null);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Session check failed:", err);
         navigate('/login', { replace: true });
-      } else {
-        setUserEmail(session.user.email || null);
-        setLoading(false);
       }
     };
     checkSession();
@@ -42,17 +47,64 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
-          {['Dashboard', 'KPI', 'Initiatives', 'Review'].map((item) => (
-            <div 
-              key={item}
-              className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
-            >
-              {item}
-            </div>
-          ))}
+          <div 
+            onClick={() => navigate('/app/dashboard')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Dashboard
+          </div>
+          <div 
+            onClick={() => navigate('/app/kpis')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            KPIs
+          </div>
+          <div 
+            onClick={() => navigate('/app/kpi-progress')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            KPI Progress
+          </div>
+          <div 
+            onClick={() => navigate('/app/initiatives')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Initiatives
+          </div>
+          <div 
+            onClick={() => navigate('/app/alerts')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Alerts
+          </div>
+          <div 
+            onClick={() => navigate('/app/notifications')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Reminders
+          </div>
+          <div 
+            onClick={() => navigate('/app/digests')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Digests
+          </div>
+          <div 
+            onClick={() => navigate('/app/review')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Review
+          </div>
+          <div 
+            onClick={() => navigate('/app/activity')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            Activity Logs
+          </div>
         </nav>
 
         <div className="p-4 border-t bg-gray-50">
+          <div className="text-xs text-green-600 font-bold mb-2">APP LAYOUT OK</div>
           <div className="text-sm font-medium text-gray-900 truncate mb-2">
             {userEmail}
           </div>
