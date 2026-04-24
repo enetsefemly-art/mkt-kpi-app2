@@ -1,4 +1,5 @@
 import React from 'react';
+import { uiText } from '../../lib/uiText';
 
 interface AppErrorStateProps {
   title?: string;
@@ -6,7 +7,11 @@ interface AppErrorStateProps {
   onRetry?: () => void;
 }
 
-export default function AppErrorState({ title = "Something went wrong", message, onRetry }: AppErrorStateProps) {
+export default function AppErrorState({ 
+  title = uiText.common.errorTitle, 
+  message, 
+  onRetry 
+}: AppErrorStateProps) {
   return (
     <div className="flex items-center justify-center min-h-[300px] p-6">
       <div className="bg-white p-8 rounded-xl border border-red-200 shadow-sm flex flex-col items-center text-center max-w-md w-full">
@@ -20,7 +25,7 @@ export default function AppErrorState({ title = "Something went wrong", message,
             onClick={onRetry}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
           >
-            Retry
+            {uiText.common.retry}
           </button>
         )}
       </div>

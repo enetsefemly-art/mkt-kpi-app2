@@ -9,11 +9,12 @@ import AppLoadingState from "../../../components/app-state/AppLoadingState";
 import AppErrorState from "../../../components/app-state/AppErrorState";
 import AppEmptyState from "../../../components/app-state/AppEmptyState";
 import { formatError } from "../../../lib/errorUtils";
+import { uiText } from "../../../lib/uiText";
 
 const SeverityBadge = ({ severity }: { severity: 'critical' | 'warning' | 'healthy' }) => {
-  if (severity === 'critical') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Critical</span>;
-  if (severity === 'warning') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Warning</span>;
-  return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Healthy</span>;
+  if (severity === 'critical') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{uiText.severity.critical}</span>;
+  if (severity === 'warning') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{uiText.severity.warning}</span>;
+  return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{uiText.severity.healthy}</span>;
 };
 
 const getProductSeverity = (rate: number) => {
@@ -82,41 +83,23 @@ export default function DashboardPage() {
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-      </div>
-
-      {/* DEBUG PANEL */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-xs overflow-x-auto border border-gray-700 shadow-sm">
-        <div className="font-bold text-white mb-2 border-b border-gray-700 pb-1">DEBUG PANEL</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div>Workspace: <span className="text-white">{workspaceId || "..."}</span></div>
-          <div>Role: <span className="text-white">{roleCode || "..."}</span></div>
-          <div>KPIs: <span className="text-white">{data?.debug.kpisCount || 0}</span></div>
-          <div>KPI Items: <span className="text-white">{data?.debug.kpiItemsCount || 0}</span></div>
-          <div>Tasks: <span className="text-white">{data?.debug.tasksCount || 0}</span></div>
-          <div>Initiatives: <span className="text-white">{data?.debug.initiativesCount || 0}</span></div>
-        </div>
-        {error && (
-          <div className="mt-2 text-red-400 border-t border-gray-700 pt-1 font-bold">
-            Last Error: {error}
-          </div>
-        )}
+        <h1 className="text-2xl font-bold text-gray-900">{uiText.navigation.dashboard}</h1>
       </div>
 
       {/* Section: Latest Digest */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Latest Digest</h3>
+          <h3 className="text-lg font-medium text-gray-900">Bản tổng hợp mới nhất</h3>
           <button
             onClick={() => navigate('/app/digests')}
             className="text-sm font-medium text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
           >
-            Open Digests
+            Xem Bản tổng hợp
           </button>
         </div>
         <div className="p-6">
           {!data?.latestDigest ? (
-            <div className="text-center text-gray-500 py-4">No digest generated yet</div>
+            <div className="text-center text-gray-500 py-4">Chưa có bản tổng hợp nào</div>
           ) : (
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
@@ -124,7 +107,7 @@ export default function DashboardPage() {
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     data.latestDigest.digest_type === 'daily' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                   } capitalize`}>
-                    {data.latestDigest.digest_type}
+                    {data.latestDigest.digest_type === 'daily' ? 'Hàng ngày' : 'Hàng tuần'}
                   </span>
                   <span className="text-sm text-gray-500">
                     {new Date(data.latestDigest.created_at).toLocaleString()}
@@ -142,45 +125,45 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Total KPI Items</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Neutral</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Tổng số hạng mục KPI</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Thông tin</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{data?.totalKpiItems || 0}</p>
-            <p className="text-xs text-gray-400 mt-1">Across all products</p>
+            <p className="text-xs text-gray-400 mt-1">Toàn bộ dự án</p>
           </div>
         </div>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">KPI Issues</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Critical</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Vấn đề KPI</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Nghiêm trọng</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{data?.kpiIssuesCount || 0}</p>
-            <p className="text-xs text-gray-400 mt-1">Underperforming items</p>
+            <p className="text-xs text-gray-400 mt-1">Hạng mục không đạt chuẩn</p>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Overdue Tasks</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Warning</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Nhiệm vụ quá hạn</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Cảnh báo</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{data?.overdueTasksCount || 0}</p>
-            <p className="text-xs text-gray-400 mt-1">Past due date</p>
+            <p className="text-xs text-gray-400 mt-1">Quá hạn dự kiến</p>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Blocked Tasks</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Critical</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Nhiệm vụ bị chặn</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Nghiêm trọng</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{data?.blockedTasksCount || 0}</p>
-            <p className="text-xs text-gray-400 mt-1">Requires attention</p>
+            <p className="text-xs text-gray-400 mt-1">Cần được chú ý</p>
           </div>
         </div>
       </div>
@@ -188,26 +171,26 @@ export default function DashboardPage() {
       {/* Section: Active Alerts */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Active Alerts</h3>
+          <h3 className="text-lg font-medium text-gray-900">Cảnh báo đang hoạt động</h3>
           <button
             onClick={() => navigate('/app/alerts')}
             className="text-sm font-medium text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
           >
-            View All Alerts
+            Xem tất cả cảnh báo
           </button>
         </div>
         {!data?.alerts || data.alerts.length === 0 ? (
-          <AppEmptyState message="No active alerts" />
+          <AppEmptyState message="Không có cảnh báo nào" />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title / Subtitle</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mức độ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiêu đề / Mô tả</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người phụ trách</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -217,7 +200,11 @@ export default function DashboardPage() {
                       <SeverityBadge severity={alert.severity} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {alert.type.replace(/_/g, ' ')}
+                      {alert.type === 'KPI_UNDERPERFORMING' ? 'KPI chậm tiến độ' : 
+                       alert.type === 'KPI_NOT_UPDATED' ? 'KPI chưa cập nhật' : 
+                       alert.type === 'TASK_OVERDUE' ? 'Nhiệm vụ quá hạn' : 
+                       alert.type === 'TASK_BLOCKED' ? 'Nhiệm vụ bị chặn' : 
+                       alert.type.replace(/_/g, ' ')}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="font-medium text-gray-900">{alert.title}</div>
@@ -227,10 +214,10 @@ export default function DashboardPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                       {alert.route && (
                         <button
-                          onClick={() => navigate(alert.route)}
+                          onClick={() => navigate(alert.route!)}
                           className="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
                         >
-                          Open
+                          Mở
                         </button>
                       )}
                     </td>
@@ -245,25 +232,25 @@ export default function DashboardPage() {
       {/* Section: My Reminders */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">My Reminders</h3>
+          <h3 className="text-lg font-medium text-gray-900">Nhắc việc của tôi</h3>
           <button
             onClick={() => navigate('/app/notifications')}
             className="text-sm font-medium text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
           >
-            View All Reminders
+            Xem tất cả nhắc việc
           </button>
         </div>
         {!data?.notifications || data.notifications.length === 0 ? (
-          <AppEmptyState message="No reminders" />
+          <AppEmptyState message="Không có nhắc việc nào" />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title / Subtitle</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mức độ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiêu đề / Mô tả</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -273,7 +260,11 @@ export default function DashboardPage() {
                       <SeverityBadge severity={notification.severity} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {notification.type.replace(/_/g, ' ')}
+                      {notification.type === 'KPI_UNDERPERFORMING' ? 'KPI chậm tiến độ' : 
+                       notification.type === 'KPI_NOT_UPDATED' ? 'KPI chưa cập nhật' : 
+                       notification.type === 'TASK_OVERDUE' ? 'Nhiệm vụ quá hạn' : 
+                       notification.type === 'TASK_BLOCKED' ? 'Nhiệm vụ bị chặn' : 
+                       notification.type.replace(/_/g, ' ')}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="font-medium text-gray-900">{notification.title}</div>
@@ -282,10 +273,10 @@ export default function DashboardPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                       {notification.route && (
                         <button
-                          onClick={() => navigate(notification.route)}
+                          onClick={() => navigate(notification.route!)}
                           className="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
                         >
-                          Open
+                          Mở
                         </button>
                       )}
                     </td>
@@ -301,20 +292,20 @@ export default function DashboardPage() {
         {/* Section: KPI Risk by Product */}
         <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">KPI Risk by Product</h3>
+            <h3 className="text-lg font-medium text-gray-900">Rủi ro KPI theo Sản phẩm</h3>
           </div>
           {data?.productSummaries.length === 0 ? (
-            <AppEmptyState message="No product risk" />
+            <AppEmptyState message="Không có rủi ro sản phẩm" />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total KPI Items</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Underperforming</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Risk Rate %</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Severity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng số Hạng mục</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Không đạt</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tỷ lệ rủi ro %</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mức độ</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -345,20 +336,20 @@ export default function DashboardPage() {
         {/* Section: Top People with KPI Issues */}
         <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Top People with KPI Issues</h3>
+            <h3 className="text-lg font-medium text-gray-900">Cá nhân có vấn đề KPI</h3>
           </div>
           {data?.peopleSummaries.length === 0 ? (
-            <AppEmptyState message="No people risk" />
+            <AppEmptyState message="Không có vấn đề nhân sự" />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Function</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">KPI Issue Count</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total KPI Items</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Risk Level</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vị trí</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số lỗi KPI</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng số Hạng mục</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mức độ rủi ro</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -379,7 +370,7 @@ export default function DashboardPage() {
                   {data?.peopleSummaries.filter(p => p.total_issue_count > 0).length === 0 && (
                     <tr>
                       <td colSpan={5} className="p-0">
-                        <AppEmptyState message="No people risk" />
+                        <AppEmptyState message="Không có vấn đề nhân sự" />
                       </td>
                     </tr>
                   )}
@@ -394,21 +385,21 @@ export default function DashboardPage() {
         {/* Section: Task Risk Overview */}
         <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Task Risk Overview</h3>
+            <h3 className="text-lg font-medium text-gray-900">Tổng quan Rủi ro Dự án</h3>
           </div>
           {data?.taskRiskOverviews.length === 0 ? (
-            <AppEmptyState message="No task risk" />
+            <AppEmptyState message="Không có rủi ro dự án" />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Initiative</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Overdue Tasks</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Blocked Tasks</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Severity</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dự án</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Quá hạn</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bị chặn</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mức độ</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -429,7 +420,7 @@ export default function DashboardPage() {
                               onClick={() => navigate(`/app/initiatives/${t.initiative_id}`)}
                               className="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
                             >
-                              Open Initiative
+                              {uiText.navigation.initiatives}
                             </button>
                           )}
                         </td>
@@ -445,21 +436,21 @@ export default function DashboardPage() {
         {/* Section: Top 5 KPI Issues */}
         <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Top 5 KPI Issues</h3>
+            <h3 className="text-lg font-medium text-gray-900">Top 5 Vấn đề KPI</h3>
           </div>
           {data?.topKpiIssues.length === 0 ? (
-            <AppEmptyState message="No critical KPI issues" />
+            <AppEmptyState message="Không có vấn đề KPI nghiêm trọng" />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">KPI / Item</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ratio</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Severity</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người phụ trách</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">KPI / Hạng mục</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tỷ lệ</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mức độ</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -484,7 +475,7 @@ export default function DashboardPage() {
                           onClick={() => navigate(`/app/kpis/${issue.kpi_id}`)}
                           className="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
                         >
-                          Open KPI
+                          {uiText.navigation.kpis}
                         </button>
                       </td>
                     </tr>
@@ -500,32 +491,32 @@ export default function DashboardPage() {
         {/* Section: Quick Links */}
         <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Quick Links</h3>
+            <h3 className="text-lg font-medium text-gray-900">Liên kết nhanh</h3>
           </div>
           <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <button 
               onClick={() => navigate('/app/kpis')}
               className="flex items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-colors group"
             >
-              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Manage KPIs</span>
+              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Quản lý KPI</span>
             </button>
             <button 
               onClick={() => navigate('/app/initiatives')}
               className="flex items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-colors group"
             >
-              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Manage Initiatives</span>
+              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Quản lý Dự án</span>
             </button>
             <button 
               onClick={() => navigate('/app/review')}
               className="flex items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-colors group"
             >
-              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Weekly Review</span>
+              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Rà soát tuần</span>
             </button>
             <button 
               onClick={() => navigate('/app/activity')}
               className="flex items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-colors group"
             >
-              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Activity Log</span>
+              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Lịch sử thao tác</span>
             </button>
           </div>
         </div>

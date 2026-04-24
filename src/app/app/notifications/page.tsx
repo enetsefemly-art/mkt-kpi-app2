@@ -8,9 +8,9 @@ import { getMyNotifications, AppNotification } from "../../../lib/notificationEn
 import { formatError } from "../../../lib/errorUtils";
 
 const SeverityBadge = ({ severity }: { severity: 'critical' | 'warning' | 'info' }) => {
-  if (severity === 'critical') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Critical</span>;
-  if (severity === 'warning') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Warning</span>;
-  return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Info</span>;
+  if (severity === 'critical') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Nghiêm trọng</span>;
+  if (severity === 'warning') return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Cảnh báo</span>;
+  return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Thông tin</span>;
 };
 
 const EmptyState = ({ message }: { message: string }) => (
@@ -90,47 +90,35 @@ export default function NotificationsPage() {
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">My Reminders</h1>
-      </div>
-
-      {/* DEBUG PANEL */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-xs overflow-x-auto border border-gray-700 shadow-sm">
-        <div className="font-bold text-white mb-2 border-b border-gray-700 pb-1">DEBUG PANEL</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>Workspace: <span className="text-white">{workspaceId || "..."}</span></div>
-          <div>Role: <span className="text-white">{roleCode || "..."}</span></div>
-          <div>User ID: <span className="text-white">{currentUserId || "..."}</span></div>
-          <div>Reminders Count: <span className="text-white">{notifications.length}</span></div>
-          {error && <div className="text-red-400 font-bold col-span-2">Error: {error}</div>}
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Nhắc việc của tôi</h1>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Total</p>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Tổng số</p>
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Critical</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Action Required</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Nghiêm trọng</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Cần xử lý</span>
           </div>
           <p className="text-3xl font-bold text-red-600">{stats.critical}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Warning</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Needs Attention</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Cảnh báo</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Cần chú ý</span>
           </div>
           <p className="text-3xl font-bold text-yellow-600">{stats.warning}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Info</p>
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Updates</span>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Thông tin</p>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Cập nhật</span>
           </div>
           <p className="text-3xl font-bold text-blue-600">{stats.info}</p>
         </div>
@@ -139,30 +127,30 @@ export default function NotificationsPage() {
       {/* Filters */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-4 items-center">
         <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium text-gray-700">Type:</label>
+          <label className="text-sm font-medium text-gray-700">Loại:</label>
           <select 
             value={filterType} 
             onChange={e => setFilterType(e.target.value)}
             className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="ALL">All Types</option>
-            <option value="TASK_DUE_SOON">Task Due Soon</option>
-            <option value="TASK_OVERDUE">Task Overdue</option>
-            <option value="TASK_BLOCKED">Task Blocked</option>
-            <option value="KPI_NOT_UPDATED">KPI Not Updated</option>
+            <option value="ALL">Tất cả</option>
+            <option value="TASK_DUE_SOON">Nhiệm vụ sắp tới hạn</option>
+            <option value="TASK_OVERDUE">Nhiệm vụ quá hạn</option>
+            <option value="TASK_BLOCKED">Nhiệm vụ bị chặn</option>
+            <option value="KPI_NOT_UPDATED">KPI chưa cập nhật</option>
           </select>
         </div>
         <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium text-gray-700">Severity:</label>
+          <label className="text-sm font-medium text-gray-700">Mức độ:</label>
           <select 
             value={filterSeverity} 
             onChange={e => setFilterSeverity(e.target.value)}
             className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="ALL">All Severities</option>
-            <option value="critical">Critical</option>
-            <option value="warning">Warning</option>
-            <option value="info">Info</option>
+            <option value="ALL">Tất cả</option>
+            <option value="critical">Nghiêm trọng</option>
+            <option value="warning">Cảnh báo</option>
+            <option value="info">Thông tin</option>
           </select>
         </div>
       </div>
@@ -170,16 +158,16 @@ export default function NotificationsPage() {
       {/* Notification List */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
         {filteredNotifications.length === 0 ? (
-          <EmptyState message="No reminders" />
+          <EmptyState message="Không có nhắc việc nào" />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title / Subtitle</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mức độ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiêu đề / Nội dung</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -189,7 +177,11 @@ export default function NotificationsPage() {
                       <SeverityBadge severity={notification.severity} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {notification.type.replace(/_/g, ' ')}
+                      {notification.type === 'KPI_UNDERPERFORMING' ? 'KPI chậm tiến độ' : 
+                       notification.type === 'KPI_NOT_UPDATED' ? 'KPI chưa cập nhật' : 
+                       notification.type === 'TASK_OVERDUE' ? 'Nhiệm vụ quá hạn' : 
+                       notification.type === 'TASK_BLOCKED' ? 'Nhiệm vụ bị chặn' : 
+                       notification.type.replace(/_/g, ' ')}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="font-medium text-gray-900">{notification.title}</div>
@@ -201,7 +193,7 @@ export default function NotificationsPage() {
                           onClick={() => navigate(notification.route)}
                           className="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
                         >
-                          Open
+                          Mở chi tiết
                         </button>
                       )}
                     </td>

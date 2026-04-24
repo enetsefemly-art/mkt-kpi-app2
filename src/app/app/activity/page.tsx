@@ -48,22 +48,7 @@ export default function ActivityPage() {
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
-      </div>
-
-      {/* DEBUG PANEL */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-xs overflow-x-auto border border-gray-700 shadow-sm">
-        <div className="font-bold text-white mb-2 border-b border-gray-700 pb-1">DEBUG PANEL</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>Workspace: <span className="text-white">{workspaceId || "..."}</span></div>
-          <div>Role: <span className="text-white">{roleCode || "..."}</span></div>
-          <div>Logs Count: <span className="text-white">{logs.length}</span></div>
-        </div>
-        {lastError && (
-          <div className="mt-2 text-red-400 border-t border-gray-700 pt-1 font-bold">
-            Last Error: {lastError}
-          </div>
-        )}
+        <h1 className="text-2xl font-bold text-gray-900">Lịch sử thao tác</h1>
       </div>
 
       {/* Error Display */}
@@ -71,7 +56,7 @@ export default function ActivityPage() {
         <div className="bg-red-50 border-l-4 border-red-400 p-4">
           <div className="flex">
             <div className="ml-3">
-              <p className="text-sm text-red-700 font-medium">Error loading activity logs</p>
+              <p className="text-sm text-red-700 font-medium">Lỗi tải dữ liệu lịch sử thao tác</p>
               <p className="text-sm text-red-600 mt-1">{lastError}</p>
             </div>
           </div>
@@ -81,17 +66,17 @@ export default function ActivityPage() {
       {/* Activity Logs Table */}
       <div className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200">
         {logs.length === 0 && !lastError ? (
-          <div className="p-8 text-center text-gray-500 italic">No activity logs yet</div>
+          <div className="p-8 text-center text-gray-500 italic">Chưa có lịch sử thao tác</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entity</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Detail</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thời gian</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người thực hiện</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Đối tượng</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Chi tiết</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -114,7 +99,10 @@ export default function ActivityPage() {
                           log.action === 'update' ? 'bg-yellow-100 text-yellow-800' : 
                           log.action === 'delete' ? 'bg-red-100 text-red-800' : 
                           'bg-gray-100 text-gray-800'}`}>
-                        {log.action.toUpperCase()}
+                        {log.action === 'create' ? 'Tạo mới' : 
+                         log.action === 'update' ? 'Cập nhật' : 
+                         log.action === 'delete' ? 'Xóa' : 
+                         log.action.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">

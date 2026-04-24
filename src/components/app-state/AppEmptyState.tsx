@@ -1,11 +1,15 @@
 import React from 'react';
+import { uiText } from '../../lib/uiText';
 
 interface AppEmptyStateProps {
   title?: string;
   message?: string;
 }
 
-export default function AppEmptyState({ title = "No data", message = "There is nothing to show yet." }: AppEmptyStateProps) {
+export default function AppEmptyState({ 
+  title = uiText.common.emptyTitle, 
+  message = uiText.common.emptySubtitle 
+}: AppEmptyStateProps) {
   return (
     <div className="flex items-center justify-center p-12">
       <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center max-w-md w-full">

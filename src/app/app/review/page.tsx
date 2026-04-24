@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getMyWorkspaceAndRole } from "../../../lib/dataAccess";
 import { getReviewData, ReviewData } from "../../../lib/reviewAccess";
 import { formatError } from "../../../lib/errorUtils";
+import { uiText } from "../../../lib/uiText";
 
 export default function WeeklyReviewPage() {
   const navigate = useNavigate();
@@ -92,50 +93,32 @@ export default function WeeklyReviewPage() {
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Weekly Review</h1>
-      </div>
-
-      {/* DEBUG PANEL */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-xs overflow-x-auto border border-gray-700 shadow-sm">
-        <div className="font-bold text-white mb-2 border-b border-gray-700 pb-1">DEBUG PANEL</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div>Workspace: <span className="text-white">{workspaceId || "..."}</span></div>
-          <div>Role: <span className="text-white">{roleCode || "..."}</span></div>
-          <div>KPIs: <span className="text-white">{data?.debug.kpisCount || 0}</span></div>
-          <div>KPI Items: <span className="text-white">{data?.debug.kpiItemsCount || 0}</span></div>
-          <div>Tasks: <span className="text-white">{data?.debug.tasksCount || 0}</span></div>
-          <div>Initiatives: <span className="text-white">{data?.debug.initiativesCount || 0}</span></div>
-        </div>
-        {error && (
-          <div className="mt-2 text-red-400 border-t border-gray-700 pt-1 font-bold">
-            Last Error: {error}
-          </div>
-        )}
+        <h1 className="text-2xl font-bold text-gray-900">Báo cáo Mức độ hoàn thành</h1>
       </div>
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-4 items-center">
         <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Filter Product</label>
+          <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Lọc theo Sản phẩm</label>
           <select
             className="block w-48 border border-gray-300 rounded-md shadow-sm p-2 text-sm"
             value={productFilter}
             onChange={e => setProductFilter(e.target.value)}
           >
-            <option value="">All Products</option>
+            <option value="">Tất cả sản phẩm</option>
             {data?.products.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Filter Owner</label>
+          <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Lọc theo Người phụ trách</label>
           <select
             className="block w-48 border border-gray-300 rounded-md shadow-sm p-2 text-sm"
             value={ownerFilter}
             onChange={e => setOwnerFilter(e.target.value)}
           >
-            <option value="">All Owners</option>
+            <option value="">Tất cả</option>
             {data?.owners.map(o => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
@@ -147,7 +130,7 @@ export default function WeeklyReviewPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500 uppercase">Underperforming KPIs</p>
+            <p className="text-sm font-medium text-gray-500 uppercase">KPI chậm tiến độ</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{filteredKpis.length}</p>
           </div>
           <div className="p-3 bg-orange-100 rounded-full">
@@ -156,7 +139,7 @@ export default function WeeklyReviewPage() {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500 uppercase">Overdue Tasks</p>
+            <p className="text-sm font-medium text-gray-500 uppercase">Nhiệm vụ quá hạn</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{filteredOverdue.length}</p>
           </div>
           <div className="p-3 bg-red-100 rounded-full">
@@ -165,7 +148,7 @@ export default function WeeklyReviewPage() {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500 uppercase">Blocked Tasks</p>
+            <p className="text-sm font-medium text-gray-500 uppercase">Nhiệm vụ bị chặn</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{filteredBlocked.length}</p>
           </div>
           <div className="p-3 bg-purple-100 rounded-full">
@@ -177,23 +160,23 @@ export default function WeeklyReviewPage() {
       {/* Section 1: KPI Underperforming */}
       <div className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-medium text-gray-900">KPI Underperforming</h3>
+          <h3 className="text-lg font-medium text-gray-900">KPI chậm tiến độ</h3>
         </div>
         {filteredKpis.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 italic">No KPI issues</div>
+          <div className="p-8 text-center text-gray-500 italic">Không có KPI nào gặp vấn đề</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">KPI / Item</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Target</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actual</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ratio</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Severity</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người phụ trách</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">KPI / Hạng mục</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Mục tiêu</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thực đạt</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tỷ lệ</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mức độ</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -222,7 +205,7 @@ export default function WeeklyReviewPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${kpi.severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'}`}>
-                        {kpi.severity.toUpperCase()}
+                        {kpi.severity === 'critical' ? 'Nghiêm trọng' : 'Cảnh báo'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
@@ -231,7 +214,7 @@ export default function WeeklyReviewPage() {
                           onClick={() => navigate(`/app/kpis/${kpi.kpi_id}`)}
                           className="text-indigo-600 hover:text-indigo-900 hover:underline"
                         >
-                          View
+                          {uiText.common.view}
                         </button>
                       )}
                     </td>
@@ -246,21 +229,21 @@ export default function WeeklyReviewPage() {
       {/* Section 2: Overdue Tasks */}
       <div className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-medium text-gray-900">Overdue Tasks</h3>
+          <h3 className="text-lg font-medium text-gray-900">Nhiệm vụ quá hạn</h3>
         </div>
         {filteredOverdue.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 italic">No overdue tasks</div>
+          <div className="p-8 text-center text-gray-500 italic">Không có nhiệm vụ nào quá hạn</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Initiative</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Days Overdue</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nhiệm vụ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dự án</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người phụ trách</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hạn chót</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số ngày quá hạn</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -282,7 +265,7 @@ export default function WeeklyReviewPage() {
                       {task.due_date}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">
-                      {task.days_overdue} days
+                      {task.days_overdue} ngày
                     </td>
                   </tr>
                 ))}
@@ -295,21 +278,21 @@ export default function WeeklyReviewPage() {
       {/* Section 3: Blocked Tasks */}
       <div className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-medium text-gray-900">Blocked Tasks</h3>
+          <h3 className="text-lg font-medium text-gray-900">Nhiệm vụ bị chặn</h3>
         </div>
         {filteredBlocked.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 italic">No blocked tasks</div>
+          <div className="p-8 text-center text-gray-500 italic">Không có nhiệm vụ nào bị chặn</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Initiative</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Blocker Reason</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nhiệm vụ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dự án</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người phụ trách</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hạn chót</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lý do bị chặn</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

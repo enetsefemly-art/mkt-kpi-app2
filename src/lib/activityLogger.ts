@@ -2,9 +2,9 @@ import { supabase } from './supabaseClient';
 
 export interface LogActivityParams {
   workspaceId: string;
-  entityType: "kpi" | "kpi_item" | "initiative" | "task";
+  entityType: string;
   entityId: string;
-  action: "create" | "update" | "delete";
+  action: string;
   detail?: Record<string, any>;
 }
 

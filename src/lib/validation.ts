@@ -8,12 +8,26 @@ export function validateKpiForm(input: {
   title: string;
   kpi_type: string;
   weight: number;
+  month_key?: string;
+  kpi_score_method?: string;
 }): ValidationResult {
   const errors: string[] = [];
   if (!input.owner_id) errors.push("Owner is required.");
   if (!input.title || input.title.trim() === "") errors.push("Title is required.");
   if (!input.kpi_type) errors.push("KPI Type is required.");
   if (input.weight <= 0 || input.weight > 100) errors.push("Weight must be greater than 0 and less than or equal to 100.");
+  
+  if (input.month_key) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.month_key)) {
+      errors.push("Month format must be YYYY-MM.");
+    }
+  }
+  
+  if (input.kpi_score_method) {
+    if (!['aggregate_ratio', 'weighted_item_score'].includes(input.kpi_score_method)) {
+      errors.push("Invalid KPI score method.");
+    }
+  }
 
   return { valid: errors.length === 0, errors };
 }

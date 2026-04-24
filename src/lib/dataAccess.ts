@@ -20,6 +20,8 @@ export interface Kpi {
   unit: string;
   weight: number;
   created_at: string;
+  month_key?: string;
+  kpi_score_method?: string;
   owner_name?: string;
   owner_function?: string;
   item_count?: number;
@@ -104,7 +106,7 @@ export async function listProfilesInWorkspace(workspaceId: string): Promise<Prof
 export async function listKpis(workspaceId: string): Promise<Kpi[]> {
   const { data: kpis, error: kpiError } = await supabase
     .from('kpis')
-    .select('id, owner_id, title, kpi_type, unit, weight, created_at')
+    .select('id, owner_id, title, kpi_type, unit, weight, created_at, month_key, kpi_score_method')
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false });
 
@@ -200,6 +202,17 @@ export async function createKpi(kpiData: any) {
     const { data, error } = await supabase
         .from('kpis')
         .insert(kpiData)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function updateKpi(kpiId: string, updates: any) {
+    const { data, error } = await supabase
+        .from('kpis')
+        .update(updates)
+        .eq('id', kpiId)
         .select()
         .single();
     if (error) throw error;

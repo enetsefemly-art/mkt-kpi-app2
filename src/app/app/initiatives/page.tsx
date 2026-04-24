@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import React, { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
 import { 
@@ -158,7 +158,6 @@ export default function InitiativesPage() {
       };
 
       const newInitiative = await createInitiative(payload);
-      console.log("initiative created", newInitiative);
 
       // Audit Log
       await logActivity({
@@ -201,20 +200,20 @@ export default function InitiativesPage() {
     e.stopPropagation();
     if (!workspaceId) return;
 
-    if (!window.confirm("Are you sure you want to delete this Initiative?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa Dự án này?")) return;
 
     if (isSubmitting) return;
     setIsSubmitting(true);
     setLastError(null);
 
     try {
-      await deleteEntity('initiatives', initiativeId, workspaceId, "Initiative");
+      await deleteEntity('initiatives', initiativeId, workspaceId, "Dự án");
       // Reload list
       const data = await listInitiatives(workspaceId, monthKeyFilter, productIdFilter || undefined);
       setInitiatives(data);
     } catch (err: any) {
       console.error("Delete error:", err);
-      setLastError(formatError(err, "Delete initiative failed"));
+      setLastError(formatError(err, "Lỗi khi xóa Dự án"));
     } finally {
       setIsSubmitting(false);
     }
@@ -225,37 +224,19 @@ export default function InitiativesPage() {
   // --- Render ---
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-900">Initiatives Management</h1>
-
-      {/* DEBUG PANEL */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-xs overflow-x-auto border border-gray-700 shadow-sm">
-        <div className="font-bold text-white mb-2 border-b border-gray-700 pb-1">DEBUG PANEL</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>Workspace: <span className="text-white">{workspaceId || "..."}</span></div>
-          <div>Role: <span className="text-white">{roleCode || "..."}</span></div>
-          <div>Products: <span className="text-white">{products.length}</span></div>
-          <div>Owners: <span className="text-white">{owners.length}</span></div>
-          <div>Initiatives (Fetched): <span className="text-white">{initiatives.length}</span></div>
-          <div>Current User: <span className="text-white">{currentUser?.email}</span></div>
-        </div>
-        {lastError && (
-          <div className="mt-2 text-red-400 border-t border-gray-700 pt-1 font-bold">
-            Last Error: {lastError}
-          </div>
-        )}
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900">Quản lý Dự án</h1>
 
       {/* Loading State */}
-      {loading && <div className="text-gray-500">Loading data...</div>}
+      {loading && <div className="text-gray-500">Đang tải dữ liệu...</div>}
 
       {/* Create Form */}
       {canCreate && !loading && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Create New Initiative</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Tạo Dự án mới</h2>
           
           {owners.length === 0 && (
             <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 text-sm rounded border border-yellow-200">
-              Warning: No owners found. Check profiles + user_roles seed/RLS. You might not be able to create an initiative.
+              Cảnh báo: Không tìm thấy người phụ trách. Vui lòng kiểm tra cấu hình người dùng.
             </div>
           )}
 
@@ -263,7 +244,7 @@ export default function InitiativesPage() {
             <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+                  <h3 className="text-sm font-medium text-red-800">Vui lòng sửa các lỗi sau:</h3>
                   <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
                     {formErrors.map((err, idx) => (
                       <li key={idx}>{err}</li>
@@ -278,7 +259,7 @@ export default function InitiativesPage() {
             <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <h3 className="text-sm font-medium text-red-800">Lỗi</h3>
                   <p className="mt-1 text-sm text-red-700">{lastError}</p>
                 </div>
               </div>
@@ -289,20 +270,20 @@ export default function InitiativesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Title */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Title</label>
+                <label className="block text-sm font-medium text-gray-700">Tiêu đề</label>
                 <input
                   type="text"
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   value={formTitle}
                   onChange={e => setFormTitle(e.target.value)}
-                  placeholder="e.g., Q1 Marketing Campaign"
+                  placeholder="VD: Chiến dịch Marketing Q1"
                 />
               </div>
 
               {/* Description */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-gray-700">Mô tả</label>
                 <textarea
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   value={formDescription}
@@ -313,7 +294,7 @@ export default function InitiativesPage() {
 
               {/* Month Key */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Month</label>
+                <label className="block text-sm font-medium text-gray-700">Tháng</label>
                 <input
                   type="month"
                   required
@@ -325,27 +306,27 @@ export default function InitiativesPage() {
 
               {/* Priority */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Priority</label>
+                <label className="block text-sm font-medium text-gray-700">Độ ưu tiên</label>
                 <select
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   value={formPriority}
                   onChange={e => setFormPriority(e.target.value)}
                 >
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
+                  <option value="high">Cao</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="low">Thấp</option>
                 </select>
               </div>
 
               {/* Product Dropdown */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Product</label>
+                <label className="block text-sm font-medium text-gray-700">Sản phẩm</label>
                 <select
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   value={formProductId}
                   onChange={e => setFormProductId(e.target.value)}
                 >
-                  <option value="">All / None</option>
+                  <option value="">Tất cả / Không phân loại</option>
                   {products.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.code})
@@ -356,14 +337,14 @@ export default function InitiativesPage() {
 
               {/* Owner Dropdown */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Owner *</label>
+                <label className="block text-sm font-medium text-gray-700">Người phụ trách *</label>
                 <select
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   value={formOwnerId}
                   onChange={e => setFormOwnerId(e.target.value)}
                 >
-                  <option value="" disabled>Select Owner</option>
+                  <option value="" disabled>Chọn người phụ trách</option>
                   {owners.map(p => (
                     <option key={p.user_id} value={p.user_id}>
                       {p.full_name} {p.function ? `- ${p.function}` : ''}
@@ -375,8 +356,8 @@ export default function InitiativesPage() {
 
             <div className="flex justify-end pt-2 items-center gap-4">
               <AppSubmitButton
-                label="Create Initiative"
-                loadingLabel="Creating..."
+                label="Lưu"
+                loadingLabel="Đang lưu..."
                 isLoading={isSubmitting}
                 onClick={handleCreateInitiative}
                 type="button"
@@ -384,7 +365,7 @@ export default function InitiativesPage() {
             </div>
             
             {createStatus === "success" && (
-              <div className="text-green-600 text-sm text-right">Successfully created!</div>
+              <div className="text-green-600 text-sm text-right">Tạo thành công!</div>
             )}
           </div>
         </div>
@@ -396,7 +377,7 @@ export default function InitiativesPage() {
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-wrap gap-4 items-center justify-between">
           <div className="flex gap-4 items-center">
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase">View Month</label>
+              <label className="block text-xs font-medium text-gray-500 uppercase">Tháng hiển thị</label>
               <input
                 type="month"
                 className="mt-1 block w-40 border border-gray-300 rounded-md shadow-sm p-1 text-sm"
@@ -405,13 +386,13 @@ export default function InitiativesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase">Filter Product</label>
+              <label className="block text-xs font-medium text-gray-500 uppercase">Lọc theo Sản phẩm</label>
               <select
                 className="mt-1 block w-40 border border-gray-300 rounded-md shadow-sm p-1 text-sm"
                 value={productIdFilter}
                 onChange={e => setProductIdFilter(e.target.value)}
               >
-                <option value="">All Products</option>
+                <option value="">Tất cả sản phẩm</option>
                 {products.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -419,7 +400,7 @@ export default function InitiativesPage() {
             </div>
           </div>
           <div className="text-sm text-gray-500">
-            Showing {initiatives.length} records
+            Hiển thị {initiatives.length} kết quả
           </div>
         </div>
 
@@ -428,14 +409,14 @@ export default function InitiativesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stats</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiêu đề</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sản phẩm</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Độ ưu tiên</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người phụ trách</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tạo</th>
                 {roleCode === 'admin' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Thao tác</th>
                 )}
               </tr>
             </thead>
@@ -443,7 +424,7 @@ export default function InitiativesPage() {
               {initiatives.length === 0 ? (
                 <tr>
                   <td colSpan={roleCode === 'admin' ? 7 : 6} className="px-6 py-8 text-center text-gray-500 italic">
-                    No initiatives found for this month/filter.
+                    Không tìm thấy dự án nào phù hợp với bộ lọc.
                   </td>
                 </tr>
               ) : (
@@ -464,7 +445,7 @@ export default function InitiativesPage() {
                         ${item.priority === 'high' ? 'bg-red-100 text-red-800' : 
                           item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
                           'bg-green-100 text-green-800'}`}>
-                        {item.priority}
+                        {item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : 'Thấp'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -473,13 +454,13 @@ export default function InitiativesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {(item.overdue_count || 0) > 0 && (
-                        <span className="text-red-600 font-bold mr-2">{item.overdue_count} overdue</span>
+                        <span className="text-red-600 font-bold mr-2">{item.overdue_count} Quá hạn</span>
                       )}
                       {(item.blocked_count || 0) > 0 && (
-                        <span className="text-orange-600 font-bold">{item.blocked_count} blocked</span>
+                        <span className="text-orange-600 font-bold">{item.blocked_count} Bị chặn</span>
                       )}
                       {!(item.overdue_count || 0) && !(item.blocked_count || 0) && (
-                        <span className="text-green-600">OK</span>
+                        <span className="text-green-600">Bình thường</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -493,7 +474,7 @@ export default function InitiativesPage() {
                           disabled={isSubmitting}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 transition-colors disabled:opacity-50"
                         >
-                          Delete
+                          Xóa
                         </button>
                       </td>
                     )}

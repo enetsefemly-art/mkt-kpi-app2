@@ -4,6 +4,16 @@ import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { getMyWorkspaceAndRole } from "../../../lib/dataAccess";
 
+// Define a clamp function
+const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
+
+const getCurrentMonthKey = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  return `${year}-${month}`;
+};
+
 export default function KpiProgressPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -12,10 +22,15 @@ export default function KpiProgressPage() {
   const [roleCode, setRoleCode] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const [monthKey, setMonthKey] = useState<string>(getCurrentMonthKey());
+  const [ownerFilter, setOwnerFilter] = useState("all");
+
   const [kpis, setKpis] = useState<any[]>([]);
   const [kpiItems, setKpiItems] = useState<any[]>([]);
-  const [rows, setRows] = useState<any[]>([]);
-  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [profiles, setProfiles] = useState<any[]>([]);
+
+  // Debug states
+  const [debugOwnersCount, setDebugOwnersCount] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -26,14 +41,16 @@ export default function KpiProgressPage() {
         const userId = session?.session?.user?.id || null;
         setCurrentUserId(userId);
 
-        const { workspaceId, roleCode } = await getMyWorkspaceAndRole();
-        setWorkspaceId(workspaceId);
-        setRoleCode(roleCode);
+        const { workspaceId: wsId, roleCode: rc } = await getMyWorkspaceAndRole();
+        setWorkspaceId(wsId);
+        setRoleCode(rc);
 
+        // Fetch KPIs for the specific month
         const { data: kpisData } = await supabase
           .from("kpis")
           .select("*")
-          .eq("workspace_id", workspaceId);
+          .eq("workspace_id", wsId)
+          .eq("month_key", monthKey);
 
         const safeKpis = kpisData || [];
         setKpis(safeKpis);
@@ -57,82 +74,7 @@ export default function KpiProgressPage() {
           .from("profiles")
           .select("user_id, full_name, function");
 
-        const profiles = profilesData || [];
-
-        const now = new Date();
-        const currentDay = now.getDate();
-        const totalDays = new Date(
-          now.getFullYear(),
-          now.getMonth() + 1,
-          0
-        ).getDate();
-
-        // SAFE COMPUTE
-        const safeItems = itemsData || [];
-
-        const rowsTemp: any[] = [];
-
-        safeItems.forEach((item: any) => {
-          try {
-            const kpi = safeKpis.find((k: any) => k.id === item.kpi_id);
-
-            if (!kpi) return;
-
-            const owner = profiles.find((p: any) => p.user_id === kpi.owner_id);
-            const ownerName = owner?.full_name || "Unknown";
-
-            const target = item.target ?? null;
-            const actual = item.actual ?? null;
-            const subWeight = item.sub_weight ?? 0;
-
-            let targetToDate = null;
-            if (target !== null) {
-              if (item.target_mode === "fixed") {
-                targetToDate = target;
-              } else {
-                targetToDate = target * (currentDay / totalDays);
-              }
-            }
-
-            let rawRatio = null;
-            if (targetToDate && targetToDate > 0 && actual !== null) {
-              rawRatio = actual / targetToDate;
-            }
-
-            let normalizedRatio = null;
-            if (rawRatio !== null) {
-              if (rawRatio < 0.8) normalizedRatio = 0.8;
-              else if (rawRatio > 1.2) normalizedRatio = 1.2;
-              else normalizedRatio = rawRatio;
-            }
-
-            let scoreItem = null;
-            if (normalizedRatio !== null) {
-              scoreItem = normalizedRatio * subWeight;
-            }
-
-            rowsTemp.push({
-              ownerId: kpi.owner_id,
-              ownerName,
-              kpiId: kpi.id,
-              kpiTitle: kpi.title,
-              itemId: item.id,
-              itemTitle: item.item_title,
-              target,
-              targetToDate,
-              actual,
-              subWeight,
-              rawRatio,
-              normalizedRatio,
-              scoreItem
-            });
-
-          } catch (err) {
-            console.error("ROW COMPUTE ERROR", err);
-          }
-        });
-
-        setRows(rowsTemp);
+        setProfiles(profilesData || []);
 
       } catch (err: any) {
         console.error(err);
@@ -143,215 +85,329 @@ export default function KpiProgressPage() {
     }
 
     load();
-  }, []);
+  }, [monthKey]);
 
-  const permittedRows = useMemo(() => {
-    return rows.filter(r => {
-      if (roleCode === "admin" || roleCode === "lead") return true;
-      return r.ownerId === currentUserId;
-    });
-  }, [rows, roleCode, currentUserId]);
-
-  const totalItems = permittedRows.length;
-  const criticalCount = permittedRows.filter(r => r.rawRatio !== null && r.rawRatio < 0.8).length;
-  const warningCount = permittedRows.filter(r => r.rawRatio !== null && r.rawRatio >= 0.8 && r.rawRatio < 1).length;
-  const healthyCount = permittedRows.filter(r => r.rawRatio !== null && r.rawRatio >= 1).length;
-
-  const uniqueOwners = Array.from(new Set(permittedRows.map(r => r.ownerName)));
-
-  const filteredRows = permittedRows.filter(r => {
-    if (ownerFilter === "all") return true;
-    return r.ownerName === ownerFilter;
-  });
-
+  // Compute Data Structure
   const groupedData = useMemo(() => {
+    const isAdminOrLead = roleCode === "admin" || roleCode === "lead";
+
+    // 1. Filter KPIs based on permissions
+    const permittedKpis = kpis.filter(k => {
+      if (isAdminOrLead) return true;
+      return k.owner_id === currentUserId; // member or viewer sees only their own
+    });
+
+    const now = new Date();
+    const currentDay = now.getDate();
+    // Approximate remaining days or use real month days
+    const [yStr, mStr] = monthKey.split('-');
+    const totalDays = new Date(parseInt(yStr), parseInt(mStr), 0).getDate();
+
+    // owner -> kpis -> items
     const ownerMap: Record<string, any> = {};
 
-    filteredRows.forEach(row => {
-      const oId = row.ownerId || "unknown";
-      if (!ownerMap[oId]) {
-         ownerMap[oId] = {
-           ownerId: oId,
-           ownerName: row.ownerName,
-           kpis: {}
-         }
+    permittedKpis.forEach(kpi => {
+      // Find owner profile
+      const ownerProfile = profiles.find(p => p.user_id === kpi.owner_id);
+      const ownerName = ownerProfile?.full_name || "Unknown";
+
+      if (!ownerMap[kpi.owner_id]) {
+        ownerMap[kpi.owner_id] = {
+          ownerId: kpi.owner_id,
+          ownerName: ownerName,
+          totalPersonScore: 0,
+          kpis: []
+        };
       }
+
+      const kpiItemsForThis = kpiItems.filter(item => item.kpi_id === kpi.id);
       
-      const ownerObj = ownerMap[oId];
-      if (!ownerObj.kpis[row.kpiId]) {
-         ownerObj.kpis[row.kpiId] = {
-           kpiId: row.kpiId,
-           kpiTitle: row.kpiTitle,
-           items: []
-         }
+      let kpiCompletionScore = 0;
+      let totalSubWeight = 0;
+      let sumActual = 0;
+      let sumTargetToDate = 0;
+
+      const processedItems = kpiItemsForThis.map(item => {
+        const target = item.target ?? null;
+        const actual = item.actual ?? null;
+        const subWeight = item.sub_weight ?? 0;
+        totalSubWeight += subWeight;
+
+        let targetToDate = null;
+        if (target !== null) {
+          if (item.target_mode === "fixed") {
+            targetToDate = target;
+          } else {
+            // Safe currentDay, if they look at past month, it might be 100% implicitly, but let's just use currentDay / totalDays unless month is past
+            // If monthKey is not current month, we probably should handle it differently. But for now, user didn't specify, so let's just do (currentDay / totalDays) or 1?
+            // Actually, we can check if monthKey < currentMonth, then ratio=1
+            const currentMonthKey = getCurrentMonthKey();
+            if (monthKey < currentMonthKey) {
+                targetToDate = target;
+            } else if (monthKey > currentMonthKey) {
+                targetToDate = 0;
+            } else {
+                targetToDate = target * (currentDay / totalDays);
+            }
+          }
+        }
+
+        let rawRatio = null;
+        if (targetToDate && targetToDate > 0 && actual !== null) {
+          rawRatio = actual / targetToDate;
+        } else if ((!targetToDate || targetToDate === 0) && actual && actual > 0) {
+            // if targetToDate is 0 but actual is > 0, ratio is essentially > 120% ? Let's use 1.2
+            rawRatio = 1.2;
+        }
+
+        let normalizedRatio = null;
+        if (rawRatio !== null) {
+          normalizedRatio = clamp(rawRatio, 0.8, 1.2);
+        }
+
+        if (actual !== null) sumActual += actual;
+        if (targetToDate !== null) sumTargetToDate += targetToDate;
+
+        return {
+          itemTitle: item.item_title,
+          target,
+          targetToDate,
+          actual,
+          subWeight,
+          rawRatio,
+          normalizedRatio,
+          scoreItem: normalizedRatio // As per new spec
+        };
+      });
+
+      const kpiScoreMethod = kpi.kpi_score_method || "weighted_item_score";
+
+      if (kpiScoreMethod === "aggregate_ratio") {
+        let kpiRawRatio = 0;
+        if (sumTargetToDate > 0) {
+          kpiRawRatio = sumActual / sumTargetToDate;
+        } else if (sumActual > 0) {
+          kpiRawRatio = 1.2;
+        }
+        const kpiNormalizedRatio = clamp(kpiRawRatio, 0.8, 1.2);
+        kpiCompletionScore = kpiNormalizedRatio * 100;
+      } else {
+        // weighted_item_score
+        let sumWeightedItems = 0;
+        processedItems.forEach(pi => {
+          if (pi.normalizedRatio !== null) {
+            sumWeightedItems += (pi.normalizedRatio * pi.subWeight);
+          }
+        });
+        kpiCompletionScore = sumWeightedItems;
       }
 
-      ownerObj.kpis[row.kpiId].items.push(row);
+      const kpiWeight = kpi.weight ?? 0;
+      const weightedKpiScore = (kpiCompletionScore / 100) * kpiWeight;
+
+      ownerMap[kpi.owner_id].kpis.push({
+        kpiId: kpi.id,
+        kpiTitle: kpi.title,
+        monthKey: kpi.month_key,
+        kpiScoreMethod,
+        kpiCompletionScore,
+        kpiWeight,
+        weightedKpiScore,
+        totalSubWeight,
+        items: processedItems
+      });
+
+      ownerMap[kpi.owner_id].totalPersonScore += weightedKpiScore;
     });
 
-    const result = Object.values(ownerMap).map((o: any) => {
-       const kpisArray = Object.values(o.kpis).map((k: any) => {
-          let totalSubWeight = 0;
-          let totalKpiScoreRaw = 0;
+    const ownersArray = Object.values(ownerMap);
+    ownersArray.sort((a,b) => a.ownerName.localeCompare(b.ownerName));
+    return ownersArray;
+  }, [kpis, kpiItems, profiles, currentUserId, roleCode, monthKey]);
 
-          k.items.forEach((item: any) => {
-             if (item.subWeight !== null && item.subWeight !== undefined) {
-               totalSubWeight += item.subWeight;
-             }
-             if (item.scoreItem !== null && item.scoreItem !== undefined) {
-                totalKpiScoreRaw += item.scoreItem;
-             }
-          });
+  // Derive counts and filters
+  useEffect(() => {
+    setDebugOwnersCount(groupedData.length);
+  }, [groupedData]);
 
-          let totalKpiScoreNormalized = null;
-          if (totalSubWeight > 0) {
-             totalKpiScoreNormalized = (totalKpiScoreRaw / totalSubWeight) * 100;
-          }
+  const uniqueOwners = Array.from(new Set(groupedData.map(o => o.ownerName)));
 
-          k.items.sort((a: any, b: any) => {
-             if (a.rawRatio === null) return 1;
-             if (b.rawRatio === null) return -1;
-             return a.rawRatio - b.rawRatio;
-          });
+  // For summary cards, we count across all *items* belonging to *permitted* KPIs
+  const allPermittedItems = groupedData.flatMap(o => o.kpis.flatMap((k: any) => k.items));
+  const totalItems = allPermittedItems.length;
+  const criticalCount = allPermittedItems.filter(i => i.rawRatio !== null && i.rawRatio < 0.8).length;
+  const warningCount = allPermittedItems.filter(i => i.rawRatio !== null && i.rawRatio >= 0.8 && i.rawRatio < 1).length;
+  const healthyCount = allPermittedItems.filter(i => i.rawRatio !== null && i.rawRatio >= 1).length;
 
-          return {
-            ...k,
-            totalSubWeight,
-            totalKpiScoreRaw,
-            totalKpiScoreNormalized
-          }
-       });
-
-       kpisArray.sort((a: any, b: any) => a.kpiTitle.localeCompare(b.kpiTitle));
-
-       return {
-         ...o,
-         kpis: kpisArray
-       }
-    });
-
-    result.sort((a: any, b: any) => a.ownerName.localeCompare(b.ownerName));
-
-    return result;
-  }, [filteredRows]);
-
-  const visibleOwnersCount = groupedData.length;
-  const visibleKpisCount = groupedData.reduce((acc, owner) => acc + owner.kpis.length, 0);
+  const displayData = useMemo(() => {
+    if (ownerFilter === "all") return groupedData;
+    return groupedData.filter(o => o.ownerName === ownerFilter);
+  }, [groupedData, ownerFilter]);
 
   if (isLoading) {
     return <div className="p-6">Loading KPI Progress...</div>;
   }
 
-  if (lastError) {
-    return (
-      <div className="p-6 text-red-500">
-        ERROR: {lastError}
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">KPI Progress</h1>
+    <div className="p-6 pb-20">
+      <h1 className="text-2xl font-bold mb-4 text-gray-900">Tiến độ KPI</h1>
 
-      <div className="mt-4 space-y-1 text-sm font-mono bg-gray-100 p-4 rounded">
-        <div>workspaceId: {workspaceId}</div>
-        <div>roleCode: {roleCode}</div>
-        <div>currentUserId: {currentUserId}</div>
-        <div>kpisCount: {kpis.length}</div>
-        <div>kpiItemsCount: {kpiItems.length}</div>
-        <div>rowsCount: {rows.length}</div>
-        <div>visibleOwnersCount: {visibleOwnersCount}</div>
-        <div>visibleKpisCount: {visibleKpisCount}</div>
-        {lastError && <div className="text-red-500">lastError: {lastError}</div>}
+      {/* FILTERS */}
+      <div className="flex gap-4 items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Tháng</label>
+          <input 
+            type="month" 
+            value={monthKey}
+            onChange={(e) => setMonthKey(e.target.value)}
+            className="border border-gray-300 rounded p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Người phụ trách</label>
+          <select
+            className="border border-gray-300 rounded p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+          >
+            <option value="all">Tất cả</option>
+            {uniqueOwners.map(o => (
+              <option key={o as string} value={o as string}>{o as string}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mt-4">
-        <div className="p-4 border bg-white rounded shadow-sm">Total: {totalItems}</div>
-        <div className="p-4 border bg-red-100 rounded shadow-sm">Critical: {criticalCount}</div>
-        <div className="p-4 border bg-yellow-100 rounded shadow-sm">Warning: {warningCount}</div>
-        <div className="p-4 border bg-green-100 rounded shadow-sm">Healthy: {healthyCount}</div>
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Tổng số Hạng mục</p>
+          <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
+        </div>
+        <div className="bg-red-50 p-4 rounded-xl shadow-sm border border-red-100 flex flex-col justify-between">
+          <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-2">Nghiêm trọng (&lt;80%)</p>
+          <p className="text-2xl font-bold text-red-700">{criticalCount}</p>
+        </div>
+        <div className="bg-yellow-50 p-4 rounded-xl shadow-sm border border-yellow-100 flex flex-col justify-between">
+          <p className="text-xs font-medium text-yellow-600 uppercase tracking-wider mb-2">Cảnh báo (80-100%)</p>
+          <p className="text-2xl font-bold text-yellow-700">{warningCount}</p>
+        </div>
+        <div className="bg-green-50 p-4 rounded-xl shadow-sm border border-green-100 flex flex-col justify-between">
+          <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-2">An toàn (&ge;100%)</p>
+          <p className="text-2xl font-bold text-green-700">{healthyCount}</p>
+        </div>
       </div>
 
-      <div className="mt-4">
-        <select
-          className="border border-gray-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-          value={ownerFilter}
-          onChange={(e) => setOwnerFilter(e.target.value)}
-        >
-          <option value="all">All Owners</option>
-          {uniqueOwners.map(o => (
-            <option key={o as string} value={o as string}>{o as string}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-6 overflow-auto max-h-[600px] border border-gray-300 rounded">
-        <table className="w-full text-sm">
+      {/* TABLE */}
+      <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-auto max-h-[70vh]">
+        <table className="w-full text-sm text-left">
           <thead className="sticky top-0 z-10 bg-gray-100 shadow-sm border-b border-gray-300">
             <tr>
-              <th className="border-r border-gray-300 p-2 text-left">Item</th>
-              <th className="border-r border-gray-300 p-2 text-left">Target</th>
-              <th className="border-r border-gray-300 p-2 text-left">Target To Date</th>
-              <th className="border-r border-gray-300 p-2 text-left">Actual</th>
-              <th className="border-r border-gray-300 p-2 text-left">Subweight</th>
-              <th className="border-r border-gray-300 p-2 text-left">Raw %</th>
-              <th className="p-2 text-left">Score</th>
+              <th className="p-3 border-r border-gray-300 font-semibold text-gray-700">Tên Hạng mục</th>
+              <th className="p-3 border-r border-gray-300 font-semibold text-gray-700 w-24">Mục tiêu</th>
+              <th className="p-3 border-r border-gray-300 font-semibold text-gray-700 w-24 text-right">Mục tiêu đến hiện tại</th>
+              <th className="p-3 border-r border-gray-300 font-semibold text-gray-700 w-24 text-right">Đạt được</th>
+              <th className="p-3 border-r border-gray-300 font-semibold text-gray-700 w-24 text-right">Tỷ trọng (%)</th>
+              <th className="p-3 border-r border-gray-300 font-semibold text-gray-700 w-24 text-right">Tỷ lệ thô (%)</th>
+              <th className="p-3 font-semibold text-gray-700 w-24 text-right">Điểm hệ số</th>
             </tr>
           </thead>
           <tbody>
-            {groupedData.length === 0 && (
+            {displayData.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center p-4">No data</td>
+                <td colSpan={7} className="p-8 text-center text-gray-500 italic">Không tìm thấy dữ liệu</td>
               </tr>
+            ) : (
+              displayData.map((owner) => (
+                <React.Fragment key={owner.ownerId}>
+                  {/* Owner Row */}
+                  <tr className="bg-gray-800 text-white">
+                    <td colSpan={5} className="p-3 font-bold uppercase tracking-wider">
+                      Người phụ trách: {owner.ownerName}
+                    </td>
+                    <td colSpan={2} className="p-3 font-bold text-right text-green-300">
+                      Tổng điểm KPI cá nhân: {owner.totalPersonScore.toFixed(2)}
+                    </td>
+                  </tr>
+
+                  {owner.kpis.map((kpi: any) => (
+                    <React.Fragment key={kpi.kpiId}>
+                      {/* KPI ROW */}
+                      <tr className="bg-indigo-50 border-b border-indigo-100">
+                        <td colSpan={7} className="p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-4">
+                              <span className="font-bold text-indigo-900 border-r border-indigo-200 pr-4">{kpi.kpiTitle}</span>
+                              <span className="text-xs font-mono text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">{kpi.monthKey}</span>
+                              {kpi.kpiScoreMethod === 'aggregate_ratio' ? (
+                                <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded">Tổng Tỷ lệ</span>
+                              ) : (
+                                <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Trung bình trọng số</span>
+                              )}
+                              {kpi.totalSubWeight !== 100 && (
+                                <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded border border-red-200">
+                                  Cảnh báo: Tổng Tỷ trọng đang là {kpi.totalSubWeight}%
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-medium">
+                              <div className="flex flex-col text-right">
+                                <span className="text-gray-500">Tỷ trọng KPI</span>
+                                <span className="text-gray-800">{kpi.kpiWeight}%</span>
+                              </div>
+                              <div className="flex flex-col text-right">
+                                <span className="text-gray-500">Điểm Thành phần</span>
+                                <span className="text-gray-800 font-bold">{kpi.kpiCompletionScore.toFixed(2)}</span>
+                              </div>
+                              <div className="flex flex-col text-right bg-indigo-100 px-3 py-1 rounded">
+                                <span className="text-indigo-600 uppercase" style={{ fontSize: '10px' }}>Điểm Trọng số</span>
+                                <span className="text-indigo-900 font-bold text-sm">{kpi.weightedKpiScore.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* ITEM ROWS */}
+                      {kpi.items.map((item: any, idx: number) => {
+                        let bgClass = "bg-white hover:bg-gray-50";
+                        if (item.rawRatio !== null) {
+                          if (item.rawRatio < 0.8) bgClass = "bg-red-50 hover:bg-red-100";
+                          else if (item.rawRatio < 1) bgClass = "bg-yellow-50 hover:bg-yellow-100";
+                          else bgClass = "bg-green-50 hover:bg-green-100";
+                        }
+
+                        return (
+                          <tr key={idx} className={`border-b border-gray-200 transition-colors ${bgClass}`}>
+                            <td className="p-3 border-r border-gray-200 pl-8 font-medium text-gray-800">
+                              {item.itemTitle}
+                            </td>
+                            <td className="p-3 border-r border-gray-200">
+                              {item.target ?? "-"}
+                            </td>
+                            <td className="p-3 border-r border-gray-200 text-right">
+                              {item.targetToDate !== null ? item.targetToDate.toFixed(1) : "-"}
+                            </td>
+                            <td className="p-3 border-r border-gray-200 text-right font-medium">
+                              {item.actual ?? "-"}
+                            </td>
+                            <td className="p-3 border-r border-gray-200 text-right text-gray-500">
+                              {item.subWeight}%
+                            </td>
+                            <td className="p-3 border-r border-gray-200 text-right font-bold">
+                              {item.rawRatio !== null ? (item.rawRatio * 100).toFixed(1) + "%" : "-"}
+                            </td>
+                            <td className="p-3 text-right font-semibold text-indigo-600">
+                              {item.scoreItem !== null ? item.scoreItem.toFixed(2) : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </React.Fragment>
+              ))
             )}
-            {groupedData.map((owner: any) => (
-              <React.Fragment key={owner.ownerId}>
-                <tr className="bg-gray-300 border-b border-gray-400">
-                  <td colSpan={7} className="p-3 font-bold uppercase text-gray-800 tracking-wider">
-                    Owner: {owner.ownerName}
-                  </td>
-                </tr>
-                {owner.kpis.map((kpi: any) => (
-                  <React.Fragment key={kpi.kpiId}>
-                    <tr className="bg-gray-200 border-b border-gray-300">
-                      <td colSpan={7} className="p-2 pl-4">
-                        <span className="font-semibold text-indigo-700 uppercase mr-4">KPI: {kpi.kpiTitle}</span>
-                        <span className="font-mono text-xs text-gray-600 mr-2">Total Subweight: {kpi.totalSubWeight}%</span>
-                        {kpi.totalSubWeight < 100 && (
-                          <span className="text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded mr-2 border border-yellow-200">Subweight total below 100%</span>
-                        )}
-                        {kpi.totalSubWeight > 100 && (
-                          <span className="text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded mr-2 border border-red-200">Subweight total exceeds 100%</span>
-                        )}
-                        <span className="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
-                           Score: {kpi.totalKpiScoreNormalized !== null ? kpi.totalKpiScoreNormalized.toFixed(2) + "%" : "-"}
-                        </span>
-                      </td>
-                    </tr>
-                    {kpi.items.map((row: any) => {
-                      let rowColor = "";
-                      if (row.rawRatio !== null) {
-                        if (row.rawRatio < 0.8) rowColor = "bg-red-50";
-                        else if (row.rawRatio < 1) rowColor = "bg-yellow-50";
-                        else rowColor = "bg-green-50";
-                      }
-                      return (
-                        <tr key={row.itemId} className={`${rowColor} border-b border-gray-200 hover:bg-gray-100 transition-colors`}>
-                          <td className="border-r border-gray-200 p-2 pl-6 font-medium text-gray-800">{row.itemTitle}</td>
-                          <td className="border-r border-gray-200 p-2">{row.target ?? "-"}</td>
-                          <td className="border-r border-gray-200 p-2">{row.targetToDate !== null ? row.targetToDate.toFixed(0) : "-"}</td>
-                          <td className="border-r border-gray-200 p-2">{row.actual ?? "-"}</td>
-                          <td className="border-r border-gray-200 p-2">{row.subWeight}%</td>
-                          <td className="border-r border-gray-200 p-2 font-medium">{row.rawRatio !== null ? (row.rawRatio * 100).toFixed(1) + "%" : "-"}</td>
-                          <td className="p-2 font-medium text-gray-700">{row.scoreItem !== null ? row.scoreItem.toFixed(2) : "-"}</td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
-              </React.Fragment>
-            ))}
           </tbody>
         </table>
       </div>

@@ -20,32 +20,19 @@ export function calcItemScore(params: KpiScoreParams): KpiScoreResult {
   let ratio = 0;
 
   if (kpiType === 'strategic') {
-    // Strategic: use manual progress (0..1)
-    // If manualProgress is null, treat as 0
     ratio = manualProgress ?? 0;
   } else {
-    // Quantitative: Revenue, Cost, Lead, Rate
     const t = target ?? 0;
     const a = actual ?? 0;
 
     if (direction === 'lower_better' || kpiType === 'cost') {
-      // Lower is better: Target / Actual
       if (a === 0) {
-        // Avoid division by zero. 
-        // If target is also 0, it's 100%. If target > 0, it's infinite (perfect?). 
-        // Usually actual=0 for cost is good, but let's cap or handle logic.
-        // For simplicity: if target > 0 and actual = 0, ratio = 1.2 (max cap) or just 1.
-        // Let's assume actual=0 is perfect if target > 0.
-        ratio = t === 0 ? 1 : 2.0; // 2.0 will be capped to 1.2
+        ratio = t === 0 ? 1 : 2.0; 
       } else {
         ratio = t / a;
       }
     } else {
-      // Higher is better: Actual / Target
       if (t === 0) {
-        // If target is 0. 
-        // If actual > 0, it's infinite. 
-        // If actual = 0, it's 100%.
         ratio = a === 0 ? 1 : 2.0;
       } else {
         ratio = a / t;
@@ -53,20 +40,19 @@ export function calcItemScore(params: KpiScoreParams): KpiScoreResult {
     }
   }
 
-  // Cap at 1.2 (120%)
-  // Ensure ratio is not negative (though inputs should be positive)
   const safeRatio = Math.max(0, ratio);
   const cappedRatio = Math.min(safeRatio, 1.2);
 
-  // Weighted Score = Capped Ratio * (KPI Weight * Sub Weight / 100)
-  // KPI Weight is typically 0-100 (percentage), Sub Weight is 0-100 (percentage)
-  // Result is in percentage points contribution to total score
-  // Example: KPI Weight 20%, Sub Weight 50%, Ratio 1.0 => 1.0 * 20 * 0.5 = 10 points
-  const weightedScore = cappedRatio * (kpiWeight * (subWeight / 100));
-
+  // scoreItem is now just the normalized_ratio (cappedRatio)
+  // We keep the property name 'weightedScore' for compatibility 
+  // with existing code but correctly calculate what it should be
+  // Actually no, wait. 'weightedScore' in the table was previously showing normalized_ratio * subWeight.
+  // The UI in [kpiId]/page.tsx can just use cappedRatio. Let's return it as `scoreItem` and also `contribution` for sum.
+  const scoreItem = cappedRatio;
+  
   return {
     ratio: safeRatio,
     cappedRatio,
-    weightedScore
+    weightedScore: scoreItem
   };
 }

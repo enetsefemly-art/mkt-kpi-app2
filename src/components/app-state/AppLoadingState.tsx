@@ -1,11 +1,15 @@
 import React from 'react';
+import { uiText } from '../../lib/uiText';
 
 interface AppLoadingStateProps {
   title?: string;
   subtitle?: string;
 }
 
-export default function AppLoadingState({ title = "Loading...", subtitle = "Please wait while data is being loaded." }: AppLoadingStateProps) {
+export default function AppLoadingState({ 
+  title = uiText.common.loading, 
+  subtitle = uiText.common.loadingSubtitle 
+}: AppLoadingStateProps) {
   return (
     <div className="flex items-center justify-center min-h-[300px] p-6">
       <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center max-w-md w-full">

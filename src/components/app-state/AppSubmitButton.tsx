@@ -1,4 +1,5 @@
 import React from 'react';
+import { uiText } from '../../lib/uiText';
 
 interface AppSubmitButtonProps {
   label: string;
@@ -12,7 +13,7 @@ interface AppSubmitButtonProps {
 
 export default function AppSubmitButton({
   label,
-  loadingLabel = "Processing...",
+  loadingLabel = uiText.common.processing,
   isLoading = false,
   disabled = false,
   onClick,
@@ -22,7 +23,6 @@ export default function AppSubmitButton({
   const isDisabled = Boolean(isLoading || disabled);
 
   const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    console.log("AppSubmitButton clicked", label);
     if (onClick) {
       onClick(e);
     }

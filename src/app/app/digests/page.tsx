@@ -122,7 +122,7 @@ export default function DigestsPage() {
 
   const handleDeleteDigest = async (digestId: string) => {
     if (!workspaceId) return;
-    if (!window.confirm("Are you sure you want to delete this Digest?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bản tổng hợp này?")) return;
 
     if (isSubmitting) return;
     try {
@@ -138,8 +138,8 @@ export default function DigestsPage() {
 
     } catch (err: any) {
       console.error(err);
-      setError(formatError(err, "Failed to delete digest"));
-      setLastError(formatError(err, "Failed to delete digest"));
+      setError(formatError(err, "Xóa bản tổng hợp thất bại"));
+      setLastError(formatError(err, "Xóa bản tổng hợp thất bại"));
     } finally {
       setIsSubmitting(false);
     }
@@ -235,46 +235,30 @@ export default function DigestsPage() {
         <div className="bg-red-50 border-l-4 border-red-400 p-4">
           <div className="flex">
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error generating digest</h3>
+              <h3 className="text-sm font-medium text-red-800">Lỗi tạo bản tổng hợp</h3>
               <p className="mt-1 text-sm text-red-700">{error}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* DEBUG PANEL */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-xs overflow-x-auto border border-gray-700 shadow-sm">
-        <div className="font-bold text-white mb-2 border-b border-gray-700 pb-1">DEBUG PANEL</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>workspaceId: <span className="text-white">{workspaceId || "..."}</span></div>
-          <div>roleCode: <span className="text-white">{roleCode || "..."}</span></div>
-          <div>digestsCount: <span className="text-white">{digests.length}</span></div>
-          <div>isSubmitting: <span className="text-white">{String(isSubmitting)}</span></div>
-          <div className="col-span-2">pendingDigestType: <span className="text-white">{pendingDigestType || "null"}</span></div>
-          <div className="col-span-2">lastCreatedDigestId: <span className="text-white">{lastCreatedDigestId || "..."}</span></div>
-          <div className="col-span-2">latestDigest?.id: <span className="text-white">{latestDigest?.id || "..."}</span></div>
-          {lastAction && <div className="col-span-2">lastAction: <span className="text-white">{lastAction}</span></div>}
-          {lastError && <div className="text-red-400 font-bold col-span-2">lastError: {lastError}</div>}
-        </div>
-      </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Digests</p>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Tổng số lượng</p>
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Latest Digest Type</p>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Loại Mới Nhất</p>
           </div>
-          <p className="text-xl font-bold text-gray-900 capitalize">{stats.latestType}</p>
+          <p className="text-xl font-bold text-gray-900 capitalize">{stats.latestType === 'daily' ? 'Hàng ngày' : stats.latestType === 'weekly' ? 'Hàng tuần' : stats.latestType}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Latest Created At</p>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Tạo lúc</p>
           </div>
           <p className="text-xl font-bold text-gray-900">{stats.latestDate}</p>
         </div>
@@ -283,17 +267,17 @@ export default function DigestsPage() {
       {/* Digest List */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
         {digests.length === 0 ? (
-          <EmptyState message="No digests generated yet" />
+          <EmptyState message="Chưa có bản tổng hợp nào" />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Summary</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tạo lúc</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiêu đề</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tóm tắt</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -305,9 +289,9 @@ export default function DigestsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                         {digest.digest_type === 'daily' ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Daily</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Hàng ngày</span>
                         ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Weekly</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Hàng tuần</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -322,7 +306,7 @@ export default function DigestsPage() {
                             onClick={() => toggleExpand(digest.id)}
                             className="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-100 transition-colors"
                           >
-                            {expandedId === digest.id ? 'Hide Details' : 'View Details'}
+                            {expandedId === digest.id ? 'Thu gọn' : 'Chi tiết'}
                           </button>
                           {roleCode === 'admin' && (
                             <button
@@ -330,7 +314,7 @@ export default function DigestsPage() {
                               disabled={isSubmitting}
                               className="text-red-500 hover:text-red-700 font-medium text-xs bg-red-50 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
                             >
-                              Delete
+                              Xóa
                             </button>
                           )}
                         </div>
@@ -340,7 +324,7 @@ export default function DigestsPage() {
                       <tr>
                         <td colSpan={5} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                           <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm">
-                            <h4 className="text-sm font-bold text-gray-900 mb-2">Payload Preview</h4>
+                            <h4 className="text-sm font-bold text-gray-900 mb-2">Dữ liệu chi tiết</h4>
                             <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto bg-gray-100 p-3 rounded-md">
                               {JSON.stringify(digest.payload, null, 2)}
                             </pre>
