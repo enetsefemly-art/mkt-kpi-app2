@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { shouldApplyUuidFilter } from './uuid';
 
 export interface UnderperformingKpi {
   id: string;
@@ -50,7 +51,7 @@ export async function getReviewData(workspaceId: string): Promise<ReviewData> {
   const { data: kpis, error: kpisError } = await supabase
     .from('kpis')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (kpisError) throw kpisError;
 
   const kpiIds = kpis?.map(k => k.id) || [];
@@ -70,14 +71,14 @@ export async function getReviewData(workspaceId: string): Promise<ReviewData> {
   const { data: initiatives, error: initError } = await supabase
     .from('initiatives')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (initError) throw initError;
 
   // 4. Fetch Tasks
   const { data: tasks, error: tasksError } = await supabase
     .from('tasks')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (tasksError) throw tasksError;
 
   // 5. Collect unique Owner IDs and Product IDs

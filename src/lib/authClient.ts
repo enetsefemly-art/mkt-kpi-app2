@@ -21,9 +21,22 @@ export async function signOut() {
 }
 
 export async function getSession() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    throw new Error(error.message);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      // Avoid crashing or showing red banners on transient LockManager or fetch issues during initial load
+      if (error.message.includes('LockManager') || error.message.includes('Failed to fetch')) {
+        console.warn("Suppressing getSession error:", error.message);
+        return null;
+      }
+      throw new Error(error.message);
+    }
+    return data.session;
+  } catch (err: any) {
+    if (err.message && (err.message.includes('LockManager') || err.message.includes('Failed to fetch'))) {
+      console.warn("Suppressing getSession exception:", err.message);
+      return null;
+    }
+    throw err;
   }
-  return data.session;
 }

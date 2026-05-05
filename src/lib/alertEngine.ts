@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { shouldApplyUuidFilter } from './uuid';
 
 export type AlertSeverity = 'critical' | 'warning' | 'info';
 export type AlertType = 'KPI_UNDERPERFORMING' | 'KPI_NOT_UPDATED' | 'TASK_OVERDUE' | 'TASK_BLOCKED';
@@ -26,7 +27,7 @@ export async function getWorkspaceAlerts(workspaceId: string): Promise<Alert[]> 
   const { data: kpis, error: kpisError } = await supabase
     .from('kpis')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (kpisError) throw kpisError;
 
   const kpiIds = kpis?.map(k => k.id) || [];
@@ -46,21 +47,21 @@ export async function getWorkspaceAlerts(workspaceId: string): Promise<Alert[]> 
   const { data: initiatives, error: initError } = await supabase
     .from('initiatives')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (initError) throw initError;
 
   // 4. Fetch Tasks
   const { data: tasks, error: tasksError } = await supabase
     .from('tasks')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (tasksError) throw tasksError;
 
   // 5. Fetch Products
   const { data: products, error: prodError } = await supabase
     .from('products')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (prodError) throw prodError;
 
   // 6. Collect unique Owner IDs

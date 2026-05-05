@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { shouldApplyUuidFilter } from './uuid';
 
 export interface ActivityLog {
   id: string;
@@ -16,7 +17,7 @@ export async function listActivityLogs(workspaceId: string): Promise<ActivityLog
   const { data: logs, error: logsError } = await supabase
     .from('activity_logs')
     .select('*')
-    .eq('workspace_id', workspaceId)
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {})
     .order('created_at', { ascending: false })
     .limit(100);
 

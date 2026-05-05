@@ -18,6 +18,8 @@ import ActivityPage from './app/app/activity/page';
 import AlertsPage from './app/app/alerts/page';
 import NotificationsPage from './app/app/notifications/page';
 import DigestsPage from './app/app/digests/page';
+import UsersPage from './app/app/users/page';
+import AccountPage from './app/app/account/page';
 import Health from './pages/Health';
 
 export default function App() {
@@ -82,6 +84,16 @@ export default function App() {
         <Route path="/app/digests" element={
           <AppLayout>
             <DigestsPage />
+          </AppLayout>
+        } />
+        <Route path="/app/users" element={
+          <AppLayout>
+            <UsersPage />
+          </AppLayout>
+        } />
+        <Route path="/app/account" element={
+          <AppLayout>
+            <AccountPage />
           </AppLayout>
         } />
       </Routes>

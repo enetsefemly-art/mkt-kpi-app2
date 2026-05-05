@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { cleanUuid, shouldApplyUuidFilter } from './uuid';
 import { getWorkspaceAlerts } from './alertEngine';
 import { getDashboardData } from './dashboardAccess';
 
@@ -32,7 +33,7 @@ export async function buildDailyDigest(workspaceId: string) {
   const { data: tasks, error: tasksError } = await supabase
     .from('tasks')
     .select('due_date, status')
-    .eq('workspace_id', workspaceId)
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {})
     .neq('status', 'done');
 
   if (tasksError) throw tasksError;
@@ -128,7 +129,7 @@ export async function saveDigest(workspaceId: string, digestType: 'daily' | 'wee
     const { data, error } = await supabase
       .from('digests')
       .insert({
-        workspace_id: workspaceId,
+        workspace_id: cleanUuid(workspaceId),
         digest_type: digestType,
         title: digestData.title,
         summary: digestData.summary,
@@ -151,7 +152,7 @@ export async function listDigests(workspaceId: string): Promise<Digest[]> {
     const { data, error } = await supabase
       .from('digests')
       .select('*')
-      .eq('workspace_id', workspaceId)
+      .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {})
       .order('created_at', { ascending: false })
       .limit(30);
 
@@ -167,7 +168,7 @@ export async function getLatestDigest(workspaceId: string): Promise<Digest | nul
   const { data, error } = await supabase
     .from('digests')
     .select('*')
-    .eq('workspace_id', workspaceId)
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {})
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

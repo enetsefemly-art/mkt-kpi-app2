@@ -9,6 +9,7 @@ import { deleteEntity } from "../../../../lib/deleteActions";
 import AppSubmitButton from "../../../../components/app-state/AppSubmitButton";
 import { validateTaskForm } from "../../../../lib/validation";
 import { formatError } from "../../../../lib/errorUtils";
+import { cleanUuid, shouldApplyUuidFilter } from "../../../../lib/uuid";
 
 // Types
 interface Initiative {
@@ -95,20 +96,26 @@ export default function Page({ params }: { params?: { initiativeId: string } }) 
       setOwners(profs);
 
       // 4. Initiative
+      const initQuery: any = {};
+      if (shouldApplyUuidFilter(initiativeId)) initQuery.id = initiativeId;
+
       const { data: initData, error: initError } = await supabase
         .from("initiatives")
         .select("*")
-        .eq("id", initiativeId)
+        .match(initQuery)
         .single();
       
       if (initError) throw initError;
       setInitiative(initData);
 
       // 5. Tasks
+      const tasksQuery: any = {};
+      if (shouldApplyUuidFilter(initiativeId)) tasksQuery.initiative_id = initiativeId;
+
       const { data: tasksData, error: tasksError } = await supabase
         .from("tasks")
         .select("*")
-        .eq("initiative_id", initiativeId)
+        .match(tasksQuery)
         .order("due_date", { ascending: true });
       
       if (tasksError) throw tasksError;
@@ -153,10 +160,10 @@ export default function Page({ params }: { params?: { initiativeId: string } }) 
     try {
 
       const payload = {
-        workspace_id: workspaceId,
-        initiative_id: initiative.id,
+        workspace_id: cleanUuid(workspaceId),
+        initiative_id: cleanUuid(initiative.id),
         title: newTaskTitle,
-        owner_id: newTaskOwnerId,
+        owner_id: cleanUuid(newTaskOwnerId),
         due_date: newTaskDueDate || null,
         status: newTaskStatus,
         blocker_reason: newTaskStatus === "blocked" ? newTaskBlockerReason : null
@@ -247,7 +254,7 @@ export default function Page({ params }: { params?: { initiativeId: string } }) 
       if (isAdminOrLead) {
         updates = {
           title: editForm.title,
-          owner_id: editForm.owner_id,
+          owner_id: cleanUuid(editForm.owner_id),
           due_date: editForm.due_date || null,
           status: editForm.status,
           blocker_reason: editForm.status === "blocked" ? editForm.blocker_reason : null

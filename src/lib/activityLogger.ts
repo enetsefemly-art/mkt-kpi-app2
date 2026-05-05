@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { cleanUuid } from './uuid';
 
 export interface LogActivityParams {
   workspaceId: string;
@@ -16,10 +17,10 @@ export async function logActivity(params: LogActivityParams) {
     }
 
     const { error } = await supabase.from('activity_logs').insert({
-      workspace_id: params.workspaceId,
-      actor_id: session?.user?.id || null,
+      workspace_id: cleanUuid(params.workspaceId),
+      actor_id: cleanUuid(session?.user?.id),
       entity_type: params.entityType,
-      entity_id: params.entityId,
+      entity_id: cleanUuid(params.entityId),
       action: params.action,
       detail: params.detail ?? {}
     });

@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { getMyWorkspaceAndRole } from "../../../lib/dataAccess";
+import { getMyWorkspaceAndRole, Profile, getCurrentWorkspaceId } from "../../../lib/dataAccess";
+import { canCreateKPI, isDirector, canViewUser } from "../../../lib/permissions";
 
 export default function KpisPage() {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ export default function KpisPage() {
   const [kpis, setKpis] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [roleCode, setRoleCode] = useState<string | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [myProfile, setMyProfile] = useState<Profile | null>(null);
+
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,7 +24,6 @@ export default function KpisPage() {
   const [formData, setFormData] = useState({
     owner_id: "",
     title: "",
-    kpi_type: "project",
     unit: "Điểm",
     weight: 100,
     month_key: "",
@@ -31,19 +34,32 @@ export default function KpisPage() {
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const roleResult = await getMyWorkspaceAndRole();
+      const [roleResult, myProfileRes] = await Promise.all([
+        getMyWorkspaceAndRole(),
+        supabase.from("profiles").select("*").eq("user_id", (await supabase.auth.getUser()).data.user?.id).maybeSingle()
+      ]);
+      const myProfile = myProfileRes.data;
+      
+      const wsId = await getCurrentWorkspaceId(myProfile, null);
+      
       setRoleCode(roleResult.roleCode);
+      setWorkspaceId(wsId);
+      setMyProfile(myProfile);
 
+      const query = supabase.from("kpis").select("*").order("created_at", { ascending: false });
+      if (wsId && wsId !== 'default') {
+        query.eq('workspace_id', wsId);
+      }
+      
       const [kpisRes, profilesRes] = await Promise.all([
-        supabase.from("kpis").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("user_id, full_name")
+        query,
+        supabase.from("profiles").select("user_id, full_name, department_id, workspace_id")
       ]);
 
       if (kpisRes.error) throw kpisRes.error;
@@ -67,34 +83,61 @@ export default function KpisPage() {
     console.log("create KPI clicked");
 
     if (isSubmitting) return;
+    setIsSubmitting(true);
+    setFormError(null);
+    
+    if (canCreate && !isDirector(myProfile?.role) && !myProfile?.department_id) {
+       setIsSubmitting(false);
+       return setFormError("Tài khoản quản lý chưa được gán phòng ban");
+    }
 
-    if (!formData.owner_id) return setFormError("Vui lòng chọn nhân sự phụ trách");
-    if (!formData.title.trim()) return setFormError("Vui lòng nhập tên KPI");
-    if (formData.weight <= 0) return setFormError("Trọng số phải lớn hơn 0");
-    if (!formData.month_key) return setFormError("Vui lòng chọn tháng");
-    if (!formData.kpi_score_method) return setFormError("Vui lòng chọn cách tính điểm");
+    const selectedOwnerProfile = profiles.find(p => p.user_id === formData.owner_id);
+    const finalWorkspaceId = await getCurrentWorkspaceId(myProfile, selectedOwnerProfile);
+
+    if (!finalWorkspaceId) {
+      setIsSubmitting(false);
+      return setFormError("Chưa xác định được workspace");
+    }
+
+    if (!formData.owner_id) { setIsSubmitting(false); return setFormError("Vui lòng chọn nhân sự phụ trách"); }
+    if (!formData.title.trim()) { setIsSubmitting(false); return setFormError("Vui lòng nhập tên KPI"); }
+    if (formData.weight <= 0) { setIsSubmitting(false); return setFormError("Trọng số phải lớn hơn 0"); }
+    if (!formData.month_key) { setIsSubmitting(false); return setFormError("Vui lòng chọn tháng"); }
+    if (!formData.kpi_score_method) { setIsSubmitting(false); return setFormError("Vui lòng chọn cách tính điểm"); }
+
+    const deptId = isDirector(myProfile?.role) ? 
+        selectedOwnerProfile?.department_id || null : 
+        myProfile?.department_id;
+
+    if (!deptId || deptId === 'default') {
+      setIsSubmitting(false);
+      return setFormError("Thông tin phòng ban không hợp lệ, vui lòng kiểm tra lại cấu hình tài khoản.");
+    }
 
     try {
-      setIsSubmitting(true);
       setFormError(null);
 
-      const { error: insertError } = await supabase.from("kpis").insert({
+      const { data: newKpi, error: insertError } = await supabase.from("kpis").insert({
         owner_id: formData.owner_id,
         title: formData.title,
-        kpi_type: formData.kpi_type,
+        kpi_type: "revenue",
         unit: formData.unit,
         weight: formData.weight,
         month_key: formData.month_key,
         kpi_score_method: formData.kpi_score_method,
-        description: formData.description
-      });
+        description: formData.description,
+        department_id: deptId,
+        workspace_id: finalWorkspaceId
+      }).select().single();
 
       if (insertError) throw insertError;
 
+      alert("Đã tạo KPI thành công");
+
+      // Reset form
       setFormData({
-        owner_id: "",
+        owner_id: myProfile?.user_id || "",
         title: "",
-        kpi_type: "project",
         unit: "Điểm",
         weight: 100,
         month_key: "",
@@ -103,7 +146,20 @@ export default function KpisPage() {
       });
       setShowCreateForm(false);
       
-      await load();
+      // Update filters to show the new KPI
+      if (ownerFilter !== "all" && ownerFilter !== formData.owner_id) {
+        setOwnerFilter("all");
+      }
+      if (monthFilter !== "all" && monthFilter !== formData.month_key) {
+        setMonthFilter("all");
+      }
+
+      // Prepend to local state
+      if (newKpi) {
+        setKpis(prev => [newKpi, ...prev]);
+      } else {
+        await load();
+      }
     } catch (err: any) {
       setFormError(err.message || "Đã xảy ra lỗi khi tạo KPI");
     } finally {
@@ -111,7 +167,8 @@ export default function KpisPage() {
     }
   };
 
-  const canCreate = roleCode === 'admin' || roleCode === 'lead';
+  const canCreate = canCreateKPI(myProfile?.role);
+
 
   if (isLoading && kpis.length === 0) {
     return (
@@ -138,7 +195,6 @@ export default function KpisPage() {
     let match = true;
     if (ownerFilter !== "all" && kpi.owner_id !== ownerFilter) match = false;
     if (monthFilter !== "all" && kpi.month_key !== monthFilter) match = false;
-    if (typeFilter !== "all" && kpi.kpi_type !== typeFilter) match = false;
     return match;
   });
 
@@ -195,25 +251,6 @@ export default function KpisPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Loại KPI</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
-            >
-              <option value="all">Tất cả loại KPI</option>
-              <option value="revenue">Doanh thu (revenue)</option>
-              <option value="lead">Khách hàng mới (lead)</option>
-              <option value="rate">Tỷ lệ (rate)</option>
-              <option value="cost">Chi phí (cost)</option>
-              <option value="strategic">Chiến lược (strategic)</option>
-              <option value="project">Dự án (project)</option>
-              <option value="product">Sản phẩm (product)</option>
-              <option value="team">Đội nhóm (team)</option>
-              <option value="personal">Cá nhân (personal)</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -247,22 +284,9 @@ export default function KpisPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
                   <option value="">-- Chọn nhân sự --</option>
-                  {profiles.map(p => (
+                  {profiles.filter(p => canViewUser(myProfile?.role, myProfile?.department_id, p.department_id)).map(p => (
                     <option key={p.user_id} value={p.user_id}>{p.full_name || "Không xác định"}</option>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Loại KPI</label>
-                <select
-                  value={formData.kpi_type}
-                  onChange={(e) => setFormData({ ...formData, kpi_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="project">Dự án</option>
-                  <option value="product">Sản phẩm</option>
-                  <option value="team">Đội nhóm</option>
-                  <option value="personal">Cá nhân</option>
                 </select>
               </div>
               <div>
@@ -328,10 +352,10 @@ export default function KpisPage() {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none flex justify-center items-center disabled:opacity-50"
+                disabled={isSubmitting || (!workspaceId && !(profiles.find(p => p.user_id === formData.owner_id)?.workspace_id))}
+                className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
-                {isSubmitting ? "Đang lưu..." : "Lưu KPI"}
+                {isSubmitting ? "Đang lưu..." : (!workspaceId && !(profiles.find(p => p.user_id === formData.owner_id)?.workspace_id)) ? "Chưa xác định được workspace" : "Lưu KPI"}
               </button>
             </div>
           </form>
@@ -350,7 +374,6 @@ export default function KpisPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân sự</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên KPI</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại KPI</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Trọng số</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tháng</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cách tính điểm</th>
@@ -361,12 +384,6 @@ export default function KpisPage() {
                 {filteredKpis.map((kpi) => {
                   const ownerProfile = (profiles || []).find(p => p.user_id === kpi.owner_id);
                   const ownerName = ownerProfile?.full_name || "Không xác định";
-                  
-                  const displayType = kpi.kpi_type === "project" ? "Dự án" : 
-                                      kpi.kpi_type === "product" ? "Sản phẩm" : 
-                                      kpi.kpi_type === "team" ? "Đội nhóm" : 
-                                      kpi.kpi_type === "personal" ? "Cá nhân" :
-                                      kpi.kpi_type || "-";
                                       
                   const displayMethod = kpi.kpi_score_method === 'aggregate_ratio' ? 'Tổng Tỷ lệ' : 
                                         kpi.kpi_score_method === 'weighted_item_score' ? 'Trung bình trọng số' :
@@ -376,7 +393,6 @@ export default function KpisPage() {
                     <tr key={kpi.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ownerName}</td>
                       <td className="px-6 py-4 text-sm text-gray-900 max-w-[200px] truncate" title={kpi.title}>{kpi.title}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{displayType}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{kpi.weight ?? 0}%</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{kpi.month_key || "-"}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{displayMethod}</td>

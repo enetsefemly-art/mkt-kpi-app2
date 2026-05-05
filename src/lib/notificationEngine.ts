@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { shouldApplyUuidFilter } from './uuid';
 
 export type NotificationSeverity = 'critical' | 'warning' | 'info';
 export type NotificationType = 'TASK_DUE_SOON' | 'TASK_OVERDUE' | 'TASK_BLOCKED' | 'KPI_NOT_UPDATED';
@@ -20,19 +21,25 @@ export async function getMyNotifications(workspaceId: string, currentUserId: str
   const notifications: AppNotification[] = [];
 
   // 1. Fetch Tasks for current user
+  const taskQuery: any = {};
+  if (shouldApplyUuidFilter(workspaceId)) taskQuery.workspace_id = workspaceId;
+  if (shouldApplyUuidFilter(currentUserId)) taskQuery.owner_id = currentUserId;
+
   const { data: tasks, error: tasksError } = await supabase
     .from('tasks')
     .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('owner_id', currentUserId);
+    .match(taskQuery);
   if (tasksError) throw tasksError;
 
   // 2. Fetch KPIs for current user
+  const kpiQuery: any = {};
+  if (shouldApplyUuidFilter(workspaceId)) kpiQuery.workspace_id = workspaceId;
+  if (shouldApplyUuidFilter(currentUserId)) kpiQuery.owner_id = currentUserId;
+
   const { data: kpis, error: kpisError } = await supabase
     .from('kpis')
     .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('owner_id', currentUserId);
+    .match(kpiQuery);
   if (kpisError) throw kpisError;
 
   const kpiIds = kpis?.map(k => k.id) || [];
@@ -52,14 +59,14 @@ export async function getMyNotifications(workspaceId: string, currentUserId: str
   const { data: initiatives, error: initError } = await supabase
     .from('initiatives')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (initError) throw initError;
 
   // 5. Fetch Products
   const { data: products, error: prodError } = await supabase
     .from('products')
     .select('*')
-    .eq('workspace_id', workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (prodError) throw prodError;
 
   const productsMap = new Map<string, any>();

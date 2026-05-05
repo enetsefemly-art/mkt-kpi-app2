@@ -6,7 +6,6 @@ export interface ValidationResult {
 export function validateKpiForm(input: {
   owner_id: string;
   title: string;
-  kpi_type: string;
   weight: number;
   month_key?: string;
   kpi_score_method?: string;
@@ -14,7 +13,6 @@ export function validateKpiForm(input: {
   const errors: string[] = [];
   if (!input.owner_id) errors.push("Owner is required.");
   if (!input.title || input.title.trim() === "") errors.push("Title is required.");
-  if (!input.kpi_type) errors.push("KPI Type is required.");
   if (input.weight <= 0 || input.weight > 100) errors.push("Weight must be greater than 0 and less than or equal to 100.");
   
   if (input.month_key) {

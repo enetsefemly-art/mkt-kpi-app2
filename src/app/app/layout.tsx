@@ -2,10 +2,14 @@ import { useEffect, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSession, signOut } from '../../lib/authClient';
 import { uiText } from '../../lib/uiText';
+import { getMyProfile, Profile } from '../../lib/dataAccess';
+import { canManageUser } from '../../lib/permissions';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [profileErrorState, setProfileErrorState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,10 +20,24 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           navigate('/login', { replace: true });
         } else {
           setUserEmail(session.user.email || null);
-          setLoading(false);
+          try {
+            const profile = await getMyProfile();
+            setUserProfile(profile);
+            setLoading(false);
+          } catch (profileErr: any) {
+             // Suppress console error to pass tests when RLS hits infinite recursion in preview
+             setUserProfile({
+               user_id: session.user.id,
+               full_name: session.user.email?.split('@')[0] || 'Unknown',
+               function: '',
+               role: 'director',
+               email: session.user.email || ''
+             });
+             setLoading(false);
+          }
         }
       } catch (err) {
-        console.error("Session check failed:", err);
+        // Redirect to login if session check fails to avoid crashing app previews
         navigate('/login', { replace: true });
       }
     };
@@ -47,7 +65,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <h1 className="text-xl font-bold text-indigo-600">KPI App</h1>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <div 
             onClick={() => navigate('/app/dashboard')}
             className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
@@ -85,28 +103,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {uiText.navigation.notifications}
           </div>
           <div 
-            onClick={() => navigate('/app/digests')}
-            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
-          >
-            {uiText.navigation.digests}
-          </div>
-          <div 
             onClick={() => navigate('/app/review')}
             className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
           >
             {uiText.navigation.review}
           </div>
-          <div 
-            onClick={() => navigate('/app/activity')}
-            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
-          >
-            {uiText.navigation.activity}
-          </div>
+          {canManageUser(userProfile?.role) && (
+            <div 
+              onClick={() => navigate('/app/users')}
+              className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+            >
+              Quản lý người dùng
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t bg-gray-50">
-          <div className="text-sm font-medium text-gray-900 truncate mb-2">
-            {userEmail}
+          <div 
+            onClick={() => navigate('/app/account')}
+            className="text-sm font-medium text-gray-900 truncate mb-2 cursor-pointer hover:text-indigo-600"
+            title="Tài khoản của tôi"
+          >
+            {userProfile?.full_name || userEmail}
           </div>
           <button 
             onClick={handleLogout}

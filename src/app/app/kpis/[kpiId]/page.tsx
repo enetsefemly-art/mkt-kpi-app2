@@ -2,7 +2,7 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getMyWorkspaceAndRole, listProducts, getKpiDetail, updateKpi, listProfilesInWorkspace } from '../../../../lib/dataAccess';
+import { getMyWorkspaceAndRole, listProducts, getKpiDetail, updateKpi, listProfilesInWorkspace, getMyProfile } from '../../../../lib/dataAccess';
 import { calcItemScore } from '../../../../lib/kpiMath';
 import { validateSubWeightTotal } from '../../../../lib/kpiProgress';
 import { supabase } from '../../../../lib/supabaseClient';
@@ -11,6 +11,8 @@ import { deleteEntity } from '../../../../lib/deleteActions';
 import AppSubmitButton from '../../../../components/app-state/AppSubmitButton';
 import { validateKpiItemForm, validateKpiForm } from '../../../../lib/validation';
 import { formatError } from '../../../../lib/errorUtils';
+import { cleanUuid, shouldApplyUuidFilter } from '../../../../lib/uuid';
+import { canCreateKPIItem, canEditKPIItem, canDeleteKPIItem, canEditKPI, canDeleteKPI, isDirector, canViewUser } from '../../../../lib/permissions';
 
 interface Product {
   id: string;
@@ -44,11 +46,13 @@ interface KpiDetail {
   description: string | null;
   month_key?: string;
   kpi_score_method?: string;
+  department_id?: string;
 }
 
 interface Profile {
   user_id: string;
   full_name: string;
+  department_id?: string;
 }
 
 export default function KpiDetailPage() {
@@ -65,6 +69,7 @@ export default function KpiDetailPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsMap, setProductsMap] = useState<Map<string, Product>>(new Map());
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [myProfile, setMyProfile] = useState<any>(null);
   
   const [isEditingKpi, setIsEditingKpi] = useState(false);
   const [editKpiData, setEditKpiData] = useState<any>({});
@@ -113,6 +118,9 @@ export default function KpiDetailPage() {
         return;
       }
       setCurrentUserId(session.user.id);
+      
+      const myProf = await getMyProfile();
+      setMyProfile(myProf);
 
       const detail = await getKpiDetail(kpiId!);
       setKpi(detail.kpi);
@@ -123,11 +131,14 @@ export default function KpiDetailPage() {
       setWorkspaceId(kpiWorkspaceId);
 
       // Fetch role specifically for this KPI's workspace
+      const userRoleQuery: any = {};
+      if (shouldApplyUuidFilter(session.user.id)) userRoleQuery.user_id = session.user.id;
+      if (shouldApplyUuidFilter(kpiWorkspaceId)) userRoleQuery.workspace_id = kpiWorkspaceId;
+
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role_code')
-        .eq('user_id', session.user.id)
-        .eq('workspace_id', kpiWorkspaceId)
+        .match(userRoleQuery)
         .maybeSingle();
         
       const fetchedRole = roleData?.role_code || null;
@@ -144,12 +155,12 @@ export default function KpiDetailPage() {
       setProfiles(profilesData);
 
       const searchParams = new URLSearchParams(location.search);
-      if (searchParams.get('mode') === 'edit' && ['admin', 'lead'].includes(fetchedRole || '')) {
+      // Wait, isEditing should be checked using canEditKPI
+      if (searchParams.get('mode') === 'edit' && canEditKPI(myProf.role, myProf.department_id, detail.kpi.department_id)) {
         setIsEditingKpi(true);
         setEditKpiData({
           title: detail.kpi.title,
           owner_id: detail.kpi.owner_id,
-          kpi_type: detail.kpi.kpi_type,
           unit: detail.kpi.unit,
           weight: detail.kpi.weight,
           description: detail.kpi.description || '',
@@ -168,10 +179,14 @@ export default function KpiDetailPage() {
 
   const kpiOwnerId = kpi?.owner_id ?? null;
   const isOwner = currentUserId !== null && currentUserId === kpiOwnerId;
-  const normalizedRole = (roleCode || '').trim().toLowerCase();
-  const canManageAll = ['admin', 'lead', 'workspace_admin', 'owner'].includes(normalizedRole);
-  const canAddItem = canManageAll;
+  const targetDeptId = kpi?.department_id || ownerProfile?.department_id;
+  
+  const canManageAll = canEditKPI(myProfile?.role, myProfile?.department_id, targetDeptId);
+  const canAddItem = canCreateKPIItem(myProfile?.role, myProfile?.department_id, targetDeptId);
+  const canDeleteItem = canDeleteKPIItem(myProfile?.role, myProfile?.department_id, targetDeptId);
   const canEditAllFields = canManageAll;
+  
+  // owner item update specific fields: actual, manual_progress, note which is handled inside UI and submission
   const canEditLimitedFields = !canManageAll && isOwner;
   const canEditItem = canEditAllFields || canEditLimitedFields;
 
@@ -195,7 +210,7 @@ export default function KpiDetailPage() {
     try {
       const payload: any = {
         kpi_id: kpiId,
-        product_id: newItem.product_id,
+        product_id: cleanUuid(newItem.product_id),
         item_title: newItem.item_title,
         sub_weight: newItem.sub_weight,
         direction: newItem.direction,
@@ -285,7 +300,7 @@ export default function KpiDetailPage() {
 
       if (canEditAllFields) {
         updatePayload = {
-          product_id: editingDraft.product_id,
+          product_id: cleanUuid(editingDraft.product_id),
           item_title: editingDraft.item_title,
           sub_weight: editingDraft.sub_weight,
           target: editingDraft.target,
@@ -494,26 +509,9 @@ export default function KpiDetailPage() {
                 onChange={e => setEditKpiData({...editKpiData, owner_id: e.target.value})}
               >
                 <option value="">Chọn nhân sự</option>
-                {profiles.map(p => (
+                {profiles.filter(p => canViewUser(myProfile?.role, myProfile?.department_id, p.department_id)).map(p => (
                   <option key={p.user_id} value={p.user_id}>{p.full_name}</option>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Loại KPI</label>
-              <select
-                className="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={editKpiData.kpi_type || 'revenue'}
-                onChange={e => setEditKpiData({...editKpiData, kpi_type: e.target.value})}
-              >
-                <option value="revenue">Doanh thu</option>
-                <option value="cost">Chi phí</option>
-                <option value="lead">Khách hàng mới / Chỉ số</option>
-                <option value="strategic">Chiến lược</option>
-                <option value="project">Dự án</option>
-                <option value="product">Sản phẩm</option>
-                <option value="team">Đội nhóm</option>
-                <option value="personal">Cá nhân</option>
               </select>
             </div>
             <div>
@@ -603,14 +601,13 @@ export default function KpiDetailPage() {
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">Chỉ xem</span>
                     )}
                   </div>
-                  {['admin', 'lead'].includes(normalizedRole) && (
+                  {canManageAll && (
                     <button
                       onClick={() => {
                         setIsEditingKpi(true);
                         setEditKpiData({
                           title: kpi.title,
                           owner_id: kpi.owner_id,
-                          kpi_type: kpi.kpi_type,
                           unit: kpi.unit,
                           weight: kpi.weight,
                           description: kpi.description || '',
@@ -631,19 +628,6 @@ export default function KpiDetailPage() {
                   <div className="flex items-center">
                     <span className="font-medium mr-1">Người phụ trách:</span>
                     <span className="text-gray-900">{ownerProfile?.full_name || 'Không rõ'}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-medium mr-1">Loại:</span>
-                    <span className="capitalize bg-gray-100 px-2 py-0.5 rounded text-gray-800">
-                      {kpi.kpi_type === "project" ? "Dự án" : 
-                       kpi.kpi_type === "product" ? "Sản phẩm" : 
-                       kpi.kpi_type === "team" ? "Đội nhóm" : 
-                       kpi.kpi_type === "personal" ? "Cá nhân" :
-                       kpi.kpi_type === "revenue" ? "Doanh thu" :
-                       kpi.kpi_type === "cost" ? "Chi phí" :
-                       kpi.kpi_type === "strategic" ? "Chiến lược" :
-                       kpi.kpi_type}
-                    </span>
                   </div>
                   <div className="flex items-center">
                     <span className="font-medium mr-1">Trọng số:</span>
@@ -883,7 +867,7 @@ export default function KpiDetailPage() {
                                   Chỉnh sửa
                                 </button>
                               )}
-                              {normalizedRole === 'admin' && (
+                              {canDeleteItem && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteItem(item.id)}

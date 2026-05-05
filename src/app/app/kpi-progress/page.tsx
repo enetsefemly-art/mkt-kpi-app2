@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { shouldApplyUuidFilter } from "../../../lib/uuid";
 import { getMyWorkspaceAndRole } from "../../../lib/dataAccess";
 
 // Define a clamp function
@@ -49,7 +50,7 @@ export default function KpiProgressPage() {
         const { data: kpisData } = await supabase
           .from("kpis")
           .select("*")
-          .eq("workspace_id", wsId)
+          .match(shouldApplyUuidFilter(wsId) ? { workspace_id: wsId } : {})
           .eq("month_key", monthKey);
 
         const safeKpis = kpisData || [];

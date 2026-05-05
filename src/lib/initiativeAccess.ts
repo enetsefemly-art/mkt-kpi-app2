@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { cleanUuid, shouldApplyUuidFilter } from './uuid';
 
 export interface Initiative {
   id: string;
@@ -38,11 +39,11 @@ export async function listInitiatives(
   let query = supabase
     .from('initiatives')
     .select('id, workspace_id, owner_id, product_id, title, description, priority, month_key, created_at')
-    .eq('workspace_id', workspaceId)
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {})
     .eq('month_key', monthKey)
     .order('created_at', { ascending: false });
 
-  if (productId) {
+  if (productId && shouldApplyUuidFilter(productId)) {
     query = query.eq('product_id', productId);
   }
 
@@ -142,9 +143,9 @@ export async function createInitiative(payload: CreateInitiativePayload) {
   const { data, error } = await supabase
     .from('initiatives')
     .insert({
-      workspace_id: payload.workspace_id,
-      owner_id: payload.owner_id,
-      product_id: payload.product_id,
+      workspace_id: cleanUuid(payload.workspace_id),
+      owner_id: cleanUuid(payload.owner_id),
+      product_id: cleanUuid(payload.product_id),
       title: payload.title,
       description: payload.description,
       priority: payload.priority,

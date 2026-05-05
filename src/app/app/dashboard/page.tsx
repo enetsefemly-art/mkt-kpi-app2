@@ -512,12 +512,6 @@ export default function DashboardPage() {
             >
               <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Rà soát tuần</span>
             </button>
-            <button 
-              onClick={() => navigate('/app/activity')}
-              className="flex items-center justify-center p-4 border border-gray-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-colors group"
-            >
-              <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Lịch sử thao tác</span>
-            </button>
           </div>
         </div>
       </div>

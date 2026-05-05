@@ -1,11 +1,12 @@
 import { supabase } from "./supabaseClient";
+import { shouldApplyUuidFilter } from "./uuid";
 
 export async function fetchKpiProgressData(workspaceId: string) {
   // 1. Fetch KPIs
   const { data: kpis, error: kpisError } = await supabase
     .from("kpis")
     .select("*")
-    .eq("workspace_id", workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (kpisError) throw kpisError;
 
   // 2. Fetch KPI Items
@@ -24,14 +25,14 @@ export async function fetchKpiProgressData(workspaceId: string) {
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select("*")
-    .eq("workspace_id", workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (productsError) throw productsError;
 
   // 4. Fetch Profiles
   const { data: workspaceUsers, error: wuError } = await supabase
     .from("workspace_users")
     .select("user_id")
-    .eq("workspace_id", workspaceId);
+    .match(shouldApplyUuidFilter(workspaceId) ? { workspace_id: workspaceId } : {});
   if (wuError) throw wuError;
 
   let profiles: any[] = [];
