@@ -22,13 +22,14 @@ export const uiText = {
   navigation: {
     dashboard: 'Tổng quan',
     kpis: 'KPI',
+    kpiProgress: 'Tiến độ KPI',
+    kpiUpdates: 'Cập nhật KPI',
     initiatives: 'Dự án trọng tâm',
     review: 'Rà soát tuần',
     alerts: 'Cảnh báo',
     notifications: 'Nhắc việc',
     digests: 'Bản tổng hợp',
     activity: 'Lịch sử thao tác',
-    kpiProgress: 'Tiến độ KPI',
     logout: 'Đăng xuất',
   },
   status: {

@@ -11,6 +11,7 @@ import DashboardPage from './app/app/dashboard/page';
 import KpiListPage from './app/app/kpis/page';
 import KpiDetailPage from './app/app/kpis/[kpiId]/page';
 import KpiProgressPage from './app/app/kpi-progress/page';
+import KpiUpdatesPage from './app/app/kpi-updates/page';
 import InitiativesPage from './app/app/initiatives/page';
 import InitiativeDetailPage from './app/app/initiatives/[initiativeId]/page';
 import ReviewPage from './app/app/review/page';
@@ -49,6 +50,11 @@ export default function App() {
         <Route path="/app/kpi-progress" element={
           <AppLayout>
             <KpiProgressPage />
+          </AppLayout>
+        } />
+        <Route path="/app/kpi-updates" element={
+          <AppLayout>
+            <KpiUpdatesPage />
           </AppLayout>
         } />
         <Route path="/app/initiatives" element={

@@ -85,6 +85,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {uiText.navigation.kpiProgress}
           </div>
           <div 
+            onClick={() => navigate('/app/kpi-updates')}
+            className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+          >
+            {uiText.navigation.kpiUpdates}
+          </div>
+          <div 
             onClick={() => navigate('/app/initiatives')}
             className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
           >
