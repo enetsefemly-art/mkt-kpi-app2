@@ -81,32 +81,31 @@ export function canDeleteKPI(
 }
 
 // Quyền quản lý Item
-export function canCreateKPIItem(
-  currentUserRole: string | null | undefined,
-  currentUserDeptId: string | null | undefined,
-  targetKpiDeptId: string | null | undefined
-): boolean {
-  return canEditKPI(currentUserRole, currentUserDeptId, targetKpiDeptId);
+export function canManageKPIItem(profile: any, kpi: any): boolean {
+  if (!profile || !kpi) return false;
+  if (isDirector(profile.role)) return true;
+  if (isManager(profile.role) && kpi.department_id === profile.department_id) return true;
+  return false;
 }
 
-export function canDeleteKPIItem(
-  currentUserRole: string | null | undefined,
-  currentUserDeptId: string | null | undefined,
-  targetKpiDeptId: string | null | undefined
-): boolean {
-  return canEditKPI(currentUserRole, currentUserDeptId, targetKpiDeptId);
+export function canCreateKPIItem(profile: any, kpi: any): boolean {
+  return canManageKPIItem(profile, kpi);
+}
+
+export function canDeleteKPIItem(profile: any, item: any, kpi: any): boolean {
+  return canManageKPIItem(profile, kpi);
 }
 
 // The item update UI has fields actual/manual_progress/note. Only those can be updated by owner.
 export function canEditKPIItem(
-  currentUserRole: string | null | undefined,
-  currentUserDeptId: string | null | undefined,
-  targetKpiDeptId: string | null | undefined,
-  currentUserId: string | null | undefined,
-  kpiOwnerId: string | null | undefined
+  profile: any,
+  item: any,
+  kpi: any
 ): { canEditAll: boolean; canEditActual: boolean } {
-  const isKpiOwner = !!(currentUserId && kpiOwnerId && currentUserId === kpiOwnerId);
-  const isAuthorizedManager = isDirector(currentUserRole) || (isManager(currentUserRole) && currentUserDeptId === targetKpiDeptId);
+  if (!profile || !kpi) return { canEditAll: false, canEditActual: false };
+  
+  const isKpiOwner = profile.user_id === kpi.owner_id;
+  const isAuthorizedManager = canManageKPIItem(profile, kpi);
 
   return {
     canEditAll: isAuthorizedManager,

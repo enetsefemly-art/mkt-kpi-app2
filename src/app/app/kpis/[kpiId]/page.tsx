@@ -182,12 +182,14 @@ export default function KpiDetailPage() {
   const targetDeptId = kpi?.department_id || ownerProfile?.department_id;
   
   const canManageAll = canEditKPI(myProfile?.role, myProfile?.department_id, targetDeptId);
-  const canAddItem = canCreateKPIItem(myProfile?.role, myProfile?.department_id, targetDeptId);
-  const canDeleteItem = canDeleteKPIItem(myProfile?.role, myProfile?.department_id, targetDeptId);
-  const canEditAllFields = canManageAll;
+  const canAddItem = canCreateKPIItem(myProfile, kpi);
+  const canDeleteItem = canDeleteKPIItem(myProfile, null, kpi);
+  
+  const itemPerms = canEditKPIItem(myProfile, null, kpi);
+  const canEditAllFields = itemPerms.canEditAll;
   
   // owner item update specific fields: actual, manual_progress, note which is handled inside UI and submission
-  const canEditLimitedFields = !canManageAll && isOwner;
+  const canEditLimitedFields = itemPerms.canEditActual && !itemPerms.canEditAll;
   const canEditItem = canEditAllFields || canEditLimitedFields;
 
   const handleAddKpiItem = async () => {

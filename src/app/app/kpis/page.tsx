@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { getMyWorkspaceAndRole, Profile, getCurrentWorkspaceId } from "../../../lib/dataAccess";
+import { Profile, getCurrentWorkspaceId } from "../../../lib/dataAccess";
 import { canCreateKPI, isDirector, canViewUser } from "../../../lib/permissions";
 
 export default function KpisPage() {
@@ -40,15 +40,13 @@ export default function KpisPage() {
       setIsLoading(true);
       setError(null);
 
-      const [roleResult, myProfileRes] = await Promise.all([
-        getMyWorkspaceAndRole(),
-        supabase.from("profiles").select("*").eq("user_id", (await supabase.auth.getUser()).data.user?.id).maybeSingle()
-      ]);
+      const currentUserRes = await supabase.auth.getUser();
+      const myProfileRes = await supabase.from("profiles").select("*").eq("user_id", currentUserRes.data.user?.id).maybeSingle();
       const myProfile = myProfileRes.data;
       
       const wsId = await getCurrentWorkspaceId(myProfile, null);
       
-      setRoleCode(roleResult.roleCode);
+      setRoleCode(myProfile?.role || 'viewer');
       setWorkspaceId(wsId);
       setMyProfile(myProfile);
 

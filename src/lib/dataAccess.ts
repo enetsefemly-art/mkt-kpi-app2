@@ -106,30 +106,27 @@ export async function getMyWorkspaceAndRole(): Promise<WorkspaceRole> {
   const user = await getAuthedUser();
 
   const { data, error } = await supabase
-    .from('user_roles')
-    .select('workspace_id, role_code')
+    .from('profiles')
+    .select('workspace_id, role')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .single();
 
-  if (error) {
+  if (error || !data) {
     return {
       workspaceId: '',
-      roleCode: 'member'
+      roleCode: 'viewer'
     };
   }
-
-  if (!data) {
-    return {
-      workspaceId: '',
-      roleCode: 'member'
-    };
+  
+  let wsId = data.workspace_id;
+  if (!wsId || wsId === 'default') {
+    const { data: wsData } = await supabase.from('workspaces').select('id').limit(1).maybeSingle();
+    wsId = wsData?.id || '';
   }
 
   return {
-    workspaceId: data.workspace_id,
-    roleCode: data.role_code
+    workspaceId: wsId,
+    roleCode: data.role || 'viewer'
   };
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { getMyWorkspaceAndRole, Profile, getCurrentWorkspaceId } from "../../../lib/dataAccess";
+import { Profile, getCurrentWorkspaceId } from "../../../lib/dataAccess";
 
 export default function KpiUpdatesPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -32,16 +32,16 @@ export default function KpiUpdatesPage() {
       setIsLoading(true);
       setError(null);
 
-      const [roleResult, myProfileRes, deptsRes] = await Promise.all([
-        getMyWorkspaceAndRole(),
-        supabase.from("profiles").select("*").eq("user_id", (await supabase.auth.getUser()).data.user?.id).maybeSingle(),
+      const { data: userData } = await supabase.auth.getUser();
+      const [myProfileRes, deptsRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", userData.user?.id).maybeSingle(),
         supabase.from("departments").select("id, name")
       ]);
       const myProfileData = myProfileRes.data;
       
       const wsId = await getCurrentWorkspaceId(myProfileData, null);
       
-      setRoleCode(roleResult.roleCode);
+      setRoleCode(myProfileData?.role || 'viewer');
       setWorkspaceId(wsId);
       setMyProfile(myProfileData);
       setDepartments(deptsRes.data || []);

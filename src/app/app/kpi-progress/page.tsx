@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { shouldApplyUuidFilter } from "../../../lib/uuid";
-import { getMyWorkspaceAndRole } from "../../../lib/dataAccess";
+import { getCurrentWorkspaceId } from "../../../lib/dataAccess";
 
 // Define a clamp function
 const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
@@ -41,8 +41,15 @@ export default function KpiProgressPage() {
         const { data: session } = await supabase.auth.getSession();
         const userId = session?.session?.user?.id || null;
         setCurrentUserId(userId);
+        
+        let wsId = '';
+        let rc = 'viewer';
+        if (userId) {
+          const { data: myProfile } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
+          rc = myProfile?.role || 'viewer';
+          wsId = await getCurrentWorkspaceId(myProfile, null) || '';
+        }
 
-        const { workspaceId: wsId, roleCode: rc } = await getMyWorkspaceAndRole();
         setWorkspaceId(wsId);
         setRoleCode(rc);
 
