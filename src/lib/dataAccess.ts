@@ -80,25 +80,14 @@ export async function getMyProfile(): Promise<Profile> {
     .maybeSingle();
 
   if (error) {
-    return {
-      user_id: user.id,
-      full_name: user?.email?.split('@')[0] || 'Unknown',
-      function: '',
-      role: 'director',
-      email: user.email || ''
-    };
+    // KHÔNG fake role 'director' nữa (chống leo thang quyền khi load hồ sơ lỗi).
+    throw new Error(formatError(error, 'Không tải được hồ sơ người dùng'));
   }
-  
+
   if (!data) {
-    return {
-      user_id: user.id,
-      full_name: user?.email?.split('@')[0] || 'Unknown',
-      function: '',
-      role: 'director',
-      email: user.email || ''
-    };
+    throw new Error('Không tìm thấy hồ sơ cho tài khoản này. Liên hệ quản trị viên.');
   }
-  
+
   return data as Profile;
 }
 
