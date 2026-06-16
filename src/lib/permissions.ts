@@ -112,3 +112,60 @@ export function canEditKPIItem(
     canEditActual: isAuthorizedManager || isKpiOwner
   };
 }
+
+// ===========================================================================
+// PAS module permissions
+// Mô hình "XEM tất cả / SỬA giới hạn". Đây là first line of defense ở UI;
+// RLS ở DB (migration 008) là last line of defense. Tái dùng helper role có sẵn.
+// ===========================================================================
+
+// Tạo Problem / Action: Director, Manager, Member (Viewer không được).
+export function canCreateProblem(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role) || isMember(role);
+}
+export function canCreateAction(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role) || isMember(role);
+}
+
+// Chỉ Manager/Director: đóng vấn đề, xác nhận Critical, đánh Pass/Not Pass, tạo Pattern.
+export function canResolveProblem(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role);
+}
+export function canConfirmCritical(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role);
+}
+export function canEvaluateAction(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role);
+}
+export function canCreatePattern(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role);
+}
+
+// Sửa Problem: Director (tất cả) / Manager (phòng mình) / Member (vấn đề của mình).
+export function canEditProblem(profile: any, problem: any): boolean {
+  if (!profile || !problem) return false;
+  if (isDirector(profile.role)) return true;
+  if (isManager(profile.role)) return profile.department_id === problem.department_id;
+  return profile.user_id === problem.problem_owner_id || profile.user_id === problem.created_by;
+}
+
+// Sửa Action: Director / Manager (phòng của problem) / chủ action / chủ problem.
+export function canEditAction(profile: any, action: any, problem: any): boolean {
+  if (!profile || !action) return false;
+  if (isDirector(profile.role)) return true;
+  if (isManager(profile.role) && problem) return profile.department_id === problem.department_id;
+  return (
+    profile.user_id === action.action_owner_id ||
+    (problem && profile.user_id === problem.problem_owner_id)
+  );
+}
+export function canCancelAction(profile: any, action: any, problem: any): boolean {
+  return canEditAction(profile, action, problem);
+}
+
+// Sửa/tạo Solution Pattern: Director (tất cả) / Manager (phòng của problem nguồn).
+export function canEditPattern(profile: any, sourceProblemDeptId: string | null | undefined): boolean {
+  if (!profile) return false;
+  if (isDirector(profile.role)) return true;
+  return isManager(profile.role) && profile.department_id === sourceProblemDeptId;
+}
