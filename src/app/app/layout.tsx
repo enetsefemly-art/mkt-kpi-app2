@@ -25,14 +25,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             setUserProfile(profile);
             setLoading(false);
           } catch (profileErr: any) {
-             // Suppress console error to pass tests when RLS hits infinite recursion in preview
-             setUserProfile({
-               user_id: session.user.id,
-               full_name: session.user.email?.split('@')[0] || 'Unknown',
-               function: '',
-               role: 'director',
-               email: session.user.email || ''
-             });
+             // KHÔNG fake role 'director' nữa. Hiện màn hình lỗi để user thử lại / đăng xuất.
+             setProfileErrorState(profileErr?.message || 'Không tải được hồ sơ người dùng.');
              setLoading(false);
           }
         }
@@ -53,6 +47,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (profileErrorState) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <h2 className="text-lg font-bold text-gray-900">Không tải được hồ sơ người dùng</h2>
+        <p className="text-sm text-gray-600 max-w-md">{profileErrorState}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Thử lại
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            Đăng xuất
+          </button>
+        </div>
       </div>
     );
   }
