@@ -22,6 +22,9 @@ import DigestsPage from './app/app/digests/page';
 import UsersPage from './app/app/users/page';
 import AccountPage from './app/app/account/page';
 import Health from './pages/Health';
+import ProblemsListPage from './app/app/problems/page';
+import ProblemNewPage from './app/app/problems/new/page';
+import ProblemDetailPage from './app/app/problems/[problemId]/page';
 
 export default function App() {
   return (
@@ -45,6 +48,23 @@ export default function App() {
         <Route path="/app/kpis/:kpiId" element={
           <AppLayout>
             <KpiDetailPage />
+          </AppLayout>
+        } />
+
+        {/* PAS module routes (ẩn sau feature flag pas_enabled, kiểm tra trong từng trang) */}
+        <Route path="/app/problems" element={
+          <AppLayout>
+            <ProblemsListPage />
+          </AppLayout>
+        } />
+        <Route path="/app/problems/new" element={
+          <AppLayout>
+            <ProblemNewPage />
+          </AppLayout>
+        } />
+        <Route path="/app/problems/:problemId" element={
+          <AppLayout>
+            <ProblemDetailPage />
           </AppLayout>
         } />
         <Route path="/app/kpi-progress" element={

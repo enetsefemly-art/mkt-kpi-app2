@@ -2,7 +2,7 @@ import { useEffect, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSession, signOut } from '../../lib/authClient';
 import { uiText } from '../../lib/uiText';
-import { getMyProfile, Profile } from '../../lib/dataAccess';
+import { getMyProfile, Profile, getCurrentWorkspaceId, getWorkspacePasEnabled } from '../../lib/dataAccess';
 import { canManageUser } from '../../lib/permissions';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -10,6 +10,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [profileErrorState, setProfileErrorState] = useState<string | null>(null);
+  const [pasEnabled, setPasEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,6 +24,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           try {
             const profile = await getMyProfile();
             setUserProfile(profile);
+            try {
+              const wsId = await getCurrentWorkspaceId(profile);
+              setPasEnabled(await getWorkspacePasEnabled(wsId));
+            } catch {
+              setPasEnabled(false); // không chặn app nếu đọc cờ lỗi
+            }
             setLoading(false);
           } catch (profileErr: any) {
              // KHÔNG fake role 'director' nữa. Hiện màn hình lỗi để user thử lại / đăng xuất.
@@ -107,12 +114,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           >
             {uiText.navigation.kpiUpdates}
           </div>
-          <div 
+          <div
             onClick={() => navigate('/app/initiatives')}
             className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
           >
             {uiText.navigation.initiatives}
           </div>
+          {pasEnabled && (
+            <div
+              onClick={() => navigate('/app/problems')}
+              className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+            >
+              Vấn đề (PAS)
+            </div>
+          )}
           <div 
             onClick={() => navigate('/app/alerts')}
             className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"

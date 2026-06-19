@@ -358,3 +358,21 @@ export async function updateKpiItem(itemId: string, updates: any) {
     if (error) throw error;
     return data;
 }
+
+// PAS feature flag: workspace này có bật module PAS không.
+// Lỗi/không tìm thấy -> trả về false (an toàn: PAS ẩn).
+export async function getWorkspacePasEnabled(workspaceId?: string | null): Promise<boolean> {
+  try {
+    let query = supabase.from('workspaces').select('pas_enabled');
+    if (shouldApplyUuidFilter(workspaceId)) {
+      query = query.eq('id', workspaceId);
+    } else {
+      query = query.limit(1);
+    }
+    const { data, error } = await query.maybeSingle();
+    if (error) return false;
+    return Boolean(data?.pas_enabled);
+  } catch {
+    return false;
+  }
+}
