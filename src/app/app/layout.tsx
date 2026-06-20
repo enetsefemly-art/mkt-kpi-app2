@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getSession, signOut } from '../../lib/authClient';
 import { uiText } from '../../lib/uiText';
 import { getMyProfile, Profile, getCurrentWorkspaceId, getWorkspacePasEnabled } from '../../lib/dataAccess';
-import { canManageUser } from '../../lib/permissions';
+import { canManageUser, canManageTaxonomy } from '../../lib/permissions';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -126,6 +126,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
             >
               Vấn đề (PAS)
+            </div>
+          )}
+          {pasEnabled && canManageTaxonomy(userProfile?.role) && (
+            <div
+              onClick={() => navigate('/app/pas-taxonomy')}
+              className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+            >
+              Danh mục PAS
             </div>
           )}
           <div 

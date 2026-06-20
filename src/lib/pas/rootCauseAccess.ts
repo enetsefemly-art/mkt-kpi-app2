@@ -23,10 +23,16 @@ export interface CreateRootCauseInput {
   root_cause_note: string;
   root_cause_type_id?: string | null;
   is_primary?: boolean;
+  validated?: boolean;        // true = "Đã verify", false/undefined = "Giả định"
+  evidence?: string | null;   // bắt buộc khi validated = true
 }
 
 export async function createRootCause(input: CreateRootCauseInput): Promise<RootCause> {
   const { data: { session } } = await supabase.auth.getSession();
+
+  if (input.validated && !(input.evidence && input.evidence.trim())) {
+    throw new Error('Nguyên nhân "Đã verify" cần có dẫn chứng');
+  }
 
   // Nếu đặt làm primary, bỏ primary của các root cause khác cùng problem trước
   // (DB có unique index chặn 2 primary, nên phải unset trước).
@@ -40,6 +46,8 @@ export async function createRootCause(input: CreateRootCauseInput): Promise<Root
     root_cause_note: input.root_cause_note,
     root_cause_type_id: cleanUuid(input.root_cause_type_id),
     is_primary: input.is_primary ?? false,
+    validation_status: input.validated ? 'Validated' : 'Not Validated',
+    evidence: input.validated ? (input.evidence ?? null) : null,
     created_by: session?.user?.id ?? null,
   };
 

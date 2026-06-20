@@ -25,6 +25,7 @@ import Health from './pages/Health';
 import ProblemsListPage from './app/app/problems/page';
 import ProblemNewPage from './app/app/problems/new/page';
 import ProblemDetailPage from './app/app/problems/[problemId]/page';
+import PasTaxonomyPage from './app/app/pas-taxonomy/page';
 
 export default function App() {
   return (
@@ -65,6 +66,11 @@ export default function App() {
         <Route path="/app/problems/:problemId" element={
           <AppLayout>
             <ProblemDetailPage />
+          </AppLayout>
+        } />
+        <Route path="/app/pas-taxonomy" element={
+          <AppLayout>
+            <PasTaxonomyPage />
           </AppLayout>
         } />
         <Route path="/app/kpi-progress" element={

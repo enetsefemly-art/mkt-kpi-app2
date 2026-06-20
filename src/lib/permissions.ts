@@ -163,6 +163,11 @@ export function canCancelAction(profile: any, action: any, problem: any): boolea
   return canEditAction(profile, action, problem);
 }
 
+// Quản lý Danh mục (loại vấn đề / loại nguyên nhân): Manager + Director.
+export function canManageTaxonomy(role: string | null | undefined): boolean {
+  return isDirector(role) || isManager(role);
+}
+
 // Sửa/tạo Solution Pattern: Director (tất cả) / Manager (phòng của problem nguồn).
 export function canEditPattern(profile: any, sourceProblemDeptId: string | null | undefined): boolean {
   if (!profile) return false;
