@@ -69,6 +69,7 @@ export interface RootCause {
   problem_id: string;
   root_cause_type_id?: string | null;
   root_cause_note: string;
+  evidence?: string | null;
   is_primary: boolean;
   validation_status: ValidationStatus;
   created_at: string;
