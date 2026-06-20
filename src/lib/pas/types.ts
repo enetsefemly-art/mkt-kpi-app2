@@ -97,3 +97,53 @@ export interface Action {
   deleted_at?: string | null;
   created_by?: string | null;
 }
+
+export interface ActionResult {
+  id: string;
+  workspace_id: string;
+  action_id: string;
+  result_note: string;
+  primary_result_metric_name?: string | null;
+  before_value?: number | null;
+  after_value?: number | null;
+  unit?: string | null;
+  captured_at?: string | null;
+  source: ResultSource;
+  is_locked: boolean;
+  locked_at?: string | null;
+  updated_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActionEvaluation {
+  id: string;
+  workspace_id: string;
+  action_id: string;
+  evaluation: EvaluationResult;
+  evaluation_note?: string | null;
+  evaluated_by: string;
+  evaluated_at: string;
+}
+
+export interface SolutionPattern {
+  id: string;
+  workspace_id: string;
+  source_action_id: string;
+  pattern_name: string;
+  pattern_description: string;
+  problem_type_id?: string | null;
+  root_cause_type_id?: string | null;
+  metric_signal?: string | null;
+  function_team?: string | null;
+  channel?: string | null;
+  product_id?: string | null;
+  apply_when: string;
+  do_not_apply_when: string;
+  limitation_note?: string | null;
+  manager_rating?: ManagerRating | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+  created_by?: string | null;
+}
