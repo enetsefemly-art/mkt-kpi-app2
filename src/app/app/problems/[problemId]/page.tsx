@@ -12,9 +12,12 @@ import { getProblem, updateProblem } from '../../../../lib/pas/problemAccess';
 import { listRootCauses, createRootCause, setPrimaryRootCause, updateRootCause } from '../../../../lib/pas/rootCauseAccess';
 import { listActions, createAction, updateActionStatus, cancelAction, updateAction, changeDeadline } from '../../../../lib/pas/actionAccess';
 import { listRootCauseTypes } from '../../../../lib/pas/taxonomyAccess';
-import { canResolveProblem, canEditProblem, canEditAction } from '../../../../lib/permissions';
+import { findSimilarProblems } from '../../../../lib/pas/repeatedDetector';
+import { getResult, upsertResult } from '../../../../lib/pas/resultAccess';
+import { getEvaluation, createEvaluation } from '../../../../lib/pas/evaluationAccess';
+import { canResolveProblem, canEditProblem, canEditAction, canEvaluateAction, canCreatePattern } from '../../../../lib/permissions';
 import { formatError } from '../../../../lib/errorUtils';
-import type { Problem, RootCause, Action, RootCauseType, ActionStatus, Severity } from '../../../../lib/pas/types';
+import type { Problem, RootCause, Action, RootCauseType, ActionStatus, Severity, ActionResult, ActionEvaluation } from '../../../../lib/pas/types';
 import SeverityBadge from '../../../../components/pas/SeverityBadge';
 import ProblemStatusBadge from '../../../../components/pas/ProblemStatusBadge';
 
@@ -53,6 +56,13 @@ export default function ProblemDetailPage() {
   const [rcEditDraft, setRcEditDraft] = useState({ root_cause_note: '', root_cause_type_id: '', validated: false, evidence: '' });
   const [actEditId, setActEditId] = useState<string | null>(null);
   const [actEditDraft, setActEditDraft] = useState({ action_title: '', action_owner_id: '', deadline: '', root_cause_id: '', action_description: '' });
+
+  // result / evaluation
+  const [resultsMap, setResultsMap] = useState<Map<string, ActionResult>>(new Map());
+  const [evalsMap, setEvalsMap] = useState<Map<string, ActionEvaluation>>(new Map());
+  const [expandedActionId, setExpandedActionId] = useState<string | null>(null);
+  const [resultDraft, setResultDraft] = useState({ result_note: '', primary_result_metric_name: '', before_value: '', after_value: '', unit: '' });
+  const [similar, setSimilar] = useState<Problem[]>([]);
 
   useEffect(() => {
     if (problemId) loadAll();
@@ -94,6 +104,20 @@ export default function ProblemDetailPage() {
       setRcTypes(types);
       setProfiles(profs);
       setProfilesMap(new Map(profs.map((p) => [p.user_id, p])));
+
+      // Nạp kết quả + đánh giá cho từng hành động (volume nhỏ)
+      const rMap = new Map<string, ActionResult>();
+      const eMap = new Map<string, ActionEvaluation>();
+      await Promise.all(acts.map(async (a) => {
+        const [r, ev] = await Promise.all([getResult(a.id), getEvaluation(a.id)]);
+        if (r) rMap.set(a.id, r);
+        if (ev) eMap.set(a.id, ev);
+      }));
+      setResultsMap(rMap);
+      setEvalsMap(eMap);
+
+      // Gợi ý vấn đề lặp lại (cùng loại + phòng, trong 4 tuần)
+      try { setSimilar(await findSimilarProblems(prob)); } catch { /* không chặn */ }
     } catch (err: any) {
       setError(formatError(err, 'Lỗi tải chi tiết vấn đề'));
     } finally {
@@ -129,6 +153,16 @@ export default function ProblemDetailPage() {
       await updateProblem(problem.id, workspaceId, { status: 'Resolved', resolved_at: new Date().toISOString(), resolved_by: myProfile?.user_id });
       await loadAll();
     } catch (err: any) { setError(formatError(err, 'Lỗi đóng vấn đề')); }
+    finally { setBusy(false); }
+  };
+
+  const markRepeated = async () => {
+    if (!problem || busy || similar.length === 0) return;
+    try {
+      setBusy(true);
+      await updateProblem(problem.id, workspaceId, { is_repeated: true, linked_previous_problem_id: similar[0].id });
+      await loadAll();
+    } catch (err: any) { setError(formatError(err, 'Lỗi đánh dấu lặp lại')); }
     finally { setBusy(false); }
   };
 
@@ -261,6 +295,48 @@ export default function ProblemDetailPage() {
     finally { setBusy(false); }
   };
 
+  const openResult = (a: Action) => {
+    const r = resultsMap.get(a.id);
+    setExpandedActionId(expandedActionId === a.id ? null : a.id);
+    setResultDraft({
+      result_note: r?.result_note || '',
+      primary_result_metric_name: r?.primary_result_metric_name || '',
+      before_value: r?.before_value != null ? String(r.before_value) : '',
+      after_value: r?.after_value != null ? String(r.after_value) : '',
+      unit: r?.unit || '',
+    });
+  };
+
+  const saveResult = async (a: Action) => {
+    if (busy) return;
+    if (!resultDraft.result_note.trim()) { setError('Nhập ghi chú kết quả'); return; }
+    try {
+      setBusy(true);
+      await upsertResult({
+        workspace_id: workspaceId,
+        action_id: a.id,
+        result_note: resultDraft.result_note.trim(),
+        primary_result_metric_name: resultDraft.primary_result_metric_name || null,
+        before_value: resultDraft.before_value ? Number(resultDraft.before_value) : null,
+        after_value: resultDraft.after_value ? Number(resultDraft.after_value) : null,
+        unit: resultDraft.unit || null,
+      });
+      await loadAll();
+    } catch (err: any) { setError(formatError(err, 'Lỗi lưu kết quả')); }
+    finally { setBusy(false); }
+  };
+
+  const submitEvaluation = async (a: Action, evaluation: 'Pass' | 'Not Pass') => {
+    if (busy) return;
+    if (!window.confirm(`Xác nhận đánh giá "${evaluation}"? Kết quả sẽ bị khóa sau khi đánh giá.`)) return;
+    try {
+      setBusy(true);
+      await createEvaluation(a.id, workspaceId, evaluation);
+      await loadAll();
+    } catch (err: any) { setError(formatError(err, 'Lỗi đánh giá')); }
+    finally { setBusy(false); }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>;
   }
@@ -300,6 +376,16 @@ export default function ProblemDetailPage() {
           </div>
         </div>
       </div>
+
+      {!problem.is_repeated && similar.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-sm text-amber-800 flex items-center justify-between gap-3">
+          <span>Có thể đây là vấn đề lặp lại — tìm thấy {similar.length} vấn đề tương tự (cùng loại + phòng ban) trong 4 tuần gần đây.</span>
+          {canResolveProblem(myProfile?.role) && <button onClick={markRepeated} disabled={busy} className="px-3 py-1.5 bg-amber-600 text-white rounded-md text-xs disabled:opacity-50 shrink-0">Đánh dấu lặp lại</button>}
+        </div>
+      )}
+      {problem.is_repeated && (
+        <div className="bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm text-gray-600">Đã đánh dấu là vấn đề lặp lại.</div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200 flex gap-6">
@@ -446,18 +532,60 @@ export default function ProblemDetailPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{a.action_title}</p>
-                    <p className="text-xs text-gray-500 mt-1">Phụ trách: {ownerName(a.action_owner_id)} · Hạn: {a.deadline}</p>
-                    {a.cancel_reason && <p className="text-xs text-red-600 mt-1">Lý do hủy: {a.cancel_reason}</p>}
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{a.action_title}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Phụ trách: {ownerName(a.action_owner_id)} · Hạn: {a.deadline}
+                        {evalsMap.get(a.id) && (
+                          <span className={`ml-2 font-medium ${evalsMap.get(a.id)!.evaluation === 'Pass' ? 'text-green-700' : 'text-red-700'}`}>· {evalsMap.get(a.id)!.evaluation}</span>
+                        )}
+                      </p>
+                      {a.cancel_reason && <p className="text-xs text-red-600 mt-1">Lý do hủy: {a.cancel_reason}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openResult(a)} className="text-xs text-indigo-600 hover:underline">Kết quả / Đánh giá</button>
+                      {canEditAction(myProfile, a, problem) && <button onClick={() => startEditAction(a)} className="text-xs text-indigo-600 hover:underline">Sửa</button>}
+                      <select value={a.status} onChange={(e) => handleActionStatus(a, e.target.value as ActionStatus)} disabled={busy} className="border border-gray-300 rounded-md p-1 text-xs">
+                        {ACTION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {canEditAction(myProfile, a, problem) && <button onClick={() => startEditAction(a)} className="text-xs text-indigo-600 hover:underline">Sửa</button>}
-                    <select value={a.status} onChange={(e) => handleActionStatus(a, e.target.value as ActionStatus)} disabled={busy} className="border border-gray-300 rounded-md p-1 text-xs">
-                      {ACTION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
+
+                  {expandedActionId === a.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                      {resultsMap.get(a.id)?.is_locked ? (
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium">Kết quả (đã khóa):</span> {resultsMap.get(a.id)!.result_note}
+                          {resultsMap.get(a.id)!.before_value != null && <span> · {resultsMap.get(a.id)!.before_value} → {resultsMap.get(a.id)!.after_value} {resultsMap.get(a.id)!.unit || ''}</span>}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <textarea className="w-full border border-gray-300 rounded-md p-2 text-sm" rows={2} placeholder="Ghi chú kết quả (bắt buộc)" value={resultDraft.result_note} onChange={(e) => setResultDraft({ ...resultDraft, result_note: e.target.value })} />
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <input className="border border-gray-300 rounded-md p-2 text-sm" placeholder="Chỉ số" value={resultDraft.primary_result_metric_name} onChange={(e) => setResultDraft({ ...resultDraft, primary_result_metric_name: e.target.value })} />
+                            <input className="border border-gray-300 rounded-md p-2 text-sm" placeholder="Trước" value={resultDraft.before_value} onChange={(e) => setResultDraft({ ...resultDraft, before_value: e.target.value })} />
+                            <input className="border border-gray-300 rounded-md p-2 text-sm" placeholder="Sau" value={resultDraft.after_value} onChange={(e) => setResultDraft({ ...resultDraft, after_value: e.target.value })} />
+                            <input className="border border-gray-300 rounded-md p-2 text-sm" placeholder="Đơn vị" value={resultDraft.unit} onChange={(e) => setResultDraft({ ...resultDraft, unit: e.target.value })} />
+                          </div>
+                          <button onClick={() => saveResult(a)} disabled={busy} className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50">Lưu kết quả</button>
+                        </div>
+                      )}
+
+                      {resultsMap.get(a.id) && !evalsMap.get(a.id) && canEvaluateAction(myProfile?.role) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-700">Đánh giá:</span>
+                          <button onClick={() => submitEvaluation(a, 'Pass')} disabled={busy} className="px-3 py-1 bg-green-600 text-white rounded-md text-xs disabled:opacity-50">Pass</button>
+                          <button onClick={() => submitEvaluation(a, 'Not Pass')} disabled={busy} className="px-3 py-1 bg-red-600 text-white rounded-md text-xs disabled:opacity-50">Not Pass</button>
+                        </div>
+                      )}
+
+                      {evalsMap.get(a.id)?.evaluation === 'Pass' && canCreatePattern(myProfile?.role) && (
+                        <button onClick={() => navigate(`/app/library/new?action_id=${a.id}`)} className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm">Tạo Solution Pattern</button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

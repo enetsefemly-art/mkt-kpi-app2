@@ -128,6 +128,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               Vấn đề (PAS)
             </div>
           )}
+          {pasEnabled && (
+            <div
+              onClick={() => navigate('/app/library')}
+              className="px-4 py-2 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 rounded-md cursor-pointer transition-colors"
+            >
+              Thư viện giải pháp
+            </div>
+          )}
           {pasEnabled && canManageTaxonomy(userProfile?.role) && (
             <div
               onClick={() => navigate('/app/pas-taxonomy')}

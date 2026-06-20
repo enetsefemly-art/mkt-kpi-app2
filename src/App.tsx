@@ -26,6 +26,9 @@ import ProblemsListPage from './app/app/problems/page';
 import ProblemNewPage from './app/app/problems/new/page';
 import ProblemDetailPage from './app/app/problems/[problemId]/page';
 import PasTaxonomyPage from './app/app/pas-taxonomy/page';
+import LibraryPage from './app/app/library/page';
+import PatternNewPage from './app/app/library/new/page';
+import PatternDetailPage from './app/app/library/[patternId]/page';
 
 export default function App() {
   return (
@@ -71,6 +74,21 @@ export default function App() {
         <Route path="/app/pas-taxonomy" element={
           <AppLayout>
             <PasTaxonomyPage />
+          </AppLayout>
+        } />
+        <Route path="/app/library" element={
+          <AppLayout>
+            <LibraryPage />
+          </AppLayout>
+        } />
+        <Route path="/app/library/new" element={
+          <AppLayout>
+            <PatternNewPage />
+          </AppLayout>
+        } />
+        <Route path="/app/library/:patternId" element={
+          <AppLayout>
+            <PatternDetailPage />
           </AppLayout>
         } />
         <Route path="/app/kpi-progress" element={
