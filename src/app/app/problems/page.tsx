@@ -135,7 +135,7 @@ export default function ProblemsListPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiêu đề</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vấn đề</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mức độ</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phụ trách</th>
