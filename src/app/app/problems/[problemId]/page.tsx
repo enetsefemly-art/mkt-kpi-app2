@@ -9,10 +9,10 @@ import {
   Profile,
 } from '../../../../lib/dataAccess';
 import { getProblem, updateProblem } from '../../../../lib/pas/problemAccess';
-import { listRootCauses, createRootCause, setPrimaryRootCause } from '../../../../lib/pas/rootCauseAccess';
-import { listActions, createAction, updateActionStatus, cancelAction } from '../../../../lib/pas/actionAccess';
+import { listRootCauses, createRootCause, setPrimaryRootCause, updateRootCause } from '../../../../lib/pas/rootCauseAccess';
+import { listActions, createAction, updateActionStatus, cancelAction, updateAction, changeDeadline } from '../../../../lib/pas/actionAccess';
 import { listRootCauseTypes } from '../../../../lib/pas/taxonomyAccess';
-import { canResolveProblem, canEditProblem } from '../../../../lib/permissions';
+import { canResolveProblem, canEditProblem, canEditAction } from '../../../../lib/permissions';
 import { formatError } from '../../../../lib/errorUtils';
 import type { Problem, RootCause, Action, RootCauseType, ActionStatus, Severity } from '../../../../lib/pas/types';
 import SeverityBadge from '../../../../components/pas/SeverityBadge';
@@ -47,6 +47,12 @@ export default function ProblemDetailPage() {
   const [newRc, setNewRc] = useState({ root_cause_note: '', root_cause_type_id: '', is_primary: false, validated: false, evidence: '' });
   const [newAction, setNewAction] = useState({ action_title: '', action_owner_id: '', deadline: '', root_cause_id: '', action_description: '' });
   const [busy, setBusy] = useState(false);
+
+  // edit existing root cause / action
+  const [rcEditId, setRcEditId] = useState<string | null>(null);
+  const [rcEditDraft, setRcEditDraft] = useState({ root_cause_note: '', root_cause_type_id: '', validated: false, evidence: '' });
+  const [actEditId, setActEditId] = useState<string | null>(null);
+  const [actEditDraft, setActEditDraft] = useState({ action_title: '', action_owner_id: '', deadline: '', root_cause_id: '', action_description: '' });
 
   useEffect(() => {
     if (problemId) loadAll();
@@ -144,6 +150,68 @@ export default function ProblemDetailPage() {
       setNewRc({ root_cause_note: '', root_cause_type_id: '', is_primary: false, validated: false, evidence: '' });
       await loadAll();
     } catch (err: any) { setError(formatError(err, 'Lỗi thêm nguyên nhân')); }
+    finally { setBusy(false); }
+  };
+
+  const startEditRc = (rc: RootCause) => {
+    setRcEditId(rc.id);
+    setRcEditDraft({
+      root_cause_note: rc.root_cause_note,
+      root_cause_type_id: rc.root_cause_type_id || '',
+      validated: rc.validation_status === 'Validated',
+      evidence: rc.evidence || '',
+    });
+  };
+
+  const saveEditRc = async () => {
+    if (!rcEditId || busy) return;
+    if (!rcEditDraft.root_cause_note.trim()) { setError('Nhập nội dung nguyên nhân'); return; }
+    if (rcEditDraft.validated && !rcEditDraft.evidence.trim()) { setError('Nguyên nhân "Đã verify" cần có dẫn chứng'); return; }
+    try {
+      setBusy(true);
+      await updateRootCause(rcEditId, workspaceId, {
+        root_cause_note: rcEditDraft.root_cause_note.trim(),
+        root_cause_type_id: rcEditDraft.root_cause_type_id || null,
+        validation_status: rcEditDraft.validated ? 'Validated' : 'Not Validated',
+        evidence: rcEditDraft.validated ? (rcEditDraft.evidence.trim() || null) : null,
+      });
+      setRcEditId(null);
+      await loadAll();
+    } catch (err: any) { setError(formatError(err, 'Lỗi sửa nguyên nhân')); }
+    finally { setBusy(false); }
+  };
+
+  const startEditAction = (a: Action) => {
+    setActEditId(a.id);
+    setActEditDraft({
+      action_title: a.action_title,
+      action_owner_id: a.action_owner_id,
+      deadline: a.deadline,
+      root_cause_id: a.root_cause_id || '',
+      action_description: a.action_description || '',
+    });
+  };
+
+  const saveEditAction = async () => {
+    if (!actEditId || busy) return;
+    if (!actEditDraft.action_title.trim()) { setError('Nhập tên hành động'); return; }
+    if (!actEditDraft.root_cause_id) { setError('Bắt buộc gắn 1 nguyên nhân cho hành động'); return; }
+    if (!actEditDraft.deadline) { setError('Chọn hạn chót'); return; }
+    try {
+      setBusy(true);
+      const orig = actions.find((x) => x.id === actEditId);
+      await updateAction(actEditId, workspaceId, {
+        action_title: actEditDraft.action_title.trim(),
+        action_owner_id: actEditDraft.action_owner_id,
+        root_cause_id: actEditDraft.root_cause_id,
+        action_description: actEditDraft.action_description || null,
+      });
+      if (orig && actEditDraft.deadline !== orig.deadline) {
+        await changeDeadline(actEditId, workspaceId, actEditDraft.deadline, orig.deadline_changed_count);
+      }
+      setActEditId(null);
+      await loadAll();
+    } catch (err: any) { setError(formatError(err, 'Lỗi sửa hành động')); }
     finally { setBusy(false); }
   };
 
@@ -287,18 +355,42 @@ export default function ProblemDetailPage() {
       {tab === 'root_causes' && (
         <div className="space-y-4">
           {rootCauses.map((rc) => (
-            <div key={rc.id} className="bg-white p-4 rounded-xl border border-gray-200 flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  {rc.is_primary && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">Chính</span>}
-                  {rc.validation_status === 'Validated'
-                    ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">Đã verify</span>
-                    : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">Giả định</span>}
+            <div key={rc.id} className="bg-white p-4 rounded-xl border border-gray-200">
+              {rcEditId === rc.id ? (
+                <div className="space-y-3">
+                  <select className="w-full border border-gray-300 rounded-md p-2 text-sm" value={rcEditDraft.root_cause_type_id} onChange={(e) => setRcEditDraft({ ...rcEditDraft, root_cause_type_id: e.target.value })}>
+                    <option value="">— Loại nguyên nhân (tùy chọn) —</option>
+                    {rcTypes.map((t) => <option key={t.id} value={t.id}>{t.type_name}</option>)}
+                  </select>
+                  <textarea className="w-full border border-gray-300 rounded-md p-2 text-sm" rows={2} value={rcEditDraft.root_cause_note} onChange={(e) => setRcEditDraft({ ...rcEditDraft, root_cause_note: e.target.value })} />
+                  <div className="flex items-center gap-4 text-sm">
+                    <label className="flex items-center gap-2 text-gray-700"><input type="radio" checked={!rcEditDraft.validated} onChange={() => setRcEditDraft({ ...rcEditDraft, validated: false })} /> Giả định</label>
+                    <label className="flex items-center gap-2 text-gray-700"><input type="radio" checked={rcEditDraft.validated} onChange={() => setRcEditDraft({ ...rcEditDraft, validated: true })} /> Đã verify</label>
+                  </div>
+                  {rcEditDraft.validated && <textarea className="w-full border border-gray-300 rounded-md p-2 text-sm" rows={2} placeholder="Dẫn chứng (bắt buộc)" value={rcEditDraft.evidence} onChange={(e) => setRcEditDraft({ ...rcEditDraft, evidence: e.target.value })} />}
+                  <div className="flex gap-2">
+                    <button onClick={saveEditRc} disabled={busy} className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50">Lưu</button>
+                    <button onClick={() => setRcEditId(null)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm">Hủy</button>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{rc.root_cause_note}</p>
-                {rc.evidence && <p className="text-xs text-gray-500 mt-1"><span className="font-medium">Dẫn chứng:</span> {rc.evidence}</p>}
-              </div>
-              {!rc.is_primary && <button onClick={() => handleSetPrimary(rc.id)} disabled={busy} className="text-xs text-indigo-600 hover:underline disabled:opacity-50">Đặt làm chính</button>}
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      {rc.is_primary && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">Chính</span>}
+                      {rc.validation_status === 'Validated'
+                        ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">Đã verify</span>
+                        : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">Giả định</span>}
+                    </div>
+                    <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{rc.root_cause_note}</p>
+                    {rc.evidence && <p className="text-xs text-gray-500 mt-1"><span className="font-medium">Dẫn chứng:</span> {rc.evidence}</p>}
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {editable && <button onClick={() => startEditRc(rc)} className="text-xs text-indigo-600 hover:underline">Sửa</button>}
+                    {!rc.is_primary && <button onClick={() => handleSetPrimary(rc.id)} disabled={busy} className="text-xs text-indigo-600 hover:underline disabled:opacity-50">Đặt làm chính</button>}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {rootCauses.length === 0 && <p className="text-sm text-gray-500">Chưa có nguyên nhân.</p>}
@@ -334,16 +426,40 @@ export default function ProblemDetailPage() {
         <div className="space-y-4">
           {actions.map((a) => (
             <div key={a.id} className="bg-white p-4 rounded-xl border border-gray-200">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{a.action_title}</p>
-                  <p className="text-xs text-gray-500 mt-1">Phụ trách: {ownerName(a.action_owner_id)} · Hạn: {a.deadline}</p>
-                  {a.cancel_reason && <p className="text-xs text-red-600 mt-1">Lý do hủy: {a.cancel_reason}</p>}
+              {actEditId === a.id ? (
+                <div className="space-y-3">
+                  <input className="w-full border border-gray-300 rounded-md p-2 text-sm" value={actEditDraft.action_title} onChange={(e) => setActEditDraft({ ...actEditDraft, action_title: e.target.value })} />
+                  <select className="w-full border border-gray-300 rounded-md p-2 text-sm" value={actEditDraft.root_cause_id} onChange={(e) => setActEditDraft({ ...actEditDraft, root_cause_id: e.target.value })}>
+                    <option value="">— Gắn nguyên nhân (BẮT BUỘC) —</option>
+                    {rootCauses.map((rc) => <option key={rc.id} value={rc.id}>{rc.root_cause_note.slice(0, 50)}</option>)}
+                  </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <select className="border border-gray-300 rounded-md p-2 text-sm" value={actEditDraft.action_owner_id} onChange={(e) => setActEditDraft({ ...actEditDraft, action_owner_id: e.target.value })}>
+                      <option value="">— Người phụ trách —</option>
+                      {profiles.map((p) => <option key={p.user_id} value={p.user_id}>{p.full_name}</option>)}
+                    </select>
+                    <input type="date" className="border border-gray-300 rounded-md p-2 text-sm" value={actEditDraft.deadline} onChange={(e) => setActEditDraft({ ...actEditDraft, deadline: e.target.value })} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveEditAction} disabled={busy} className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50">Lưu</button>
+                    <button onClick={() => setActEditId(null)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm">Hủy</button>
+                  </div>
                 </div>
-                <select value={a.status} onChange={(e) => handleActionStatus(a, e.target.value as ActionStatus)} disabled={busy} className="border border-gray-300 rounded-md p-1 text-xs">
-                  {ACTION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{a.action_title}</p>
+                    <p className="text-xs text-gray-500 mt-1">Phụ trách: {ownerName(a.action_owner_id)} · Hạn: {a.deadline}</p>
+                    {a.cancel_reason && <p className="text-xs text-red-600 mt-1">Lý do hủy: {a.cancel_reason}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {canEditAction(myProfile, a, problem) && <button onClick={() => startEditAction(a)} className="text-xs text-indigo-600 hover:underline">Sửa</button>}
+                    <select value={a.status} onChange={(e) => handleActionStatus(a, e.target.value as ActionStatus)} disabled={busy} className="border border-gray-300 rounded-md p-1 text-xs">
+                      {ACTION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {actions.length === 0 && <p className="text-sm text-gray-500">Chưa có hành động.</p>}

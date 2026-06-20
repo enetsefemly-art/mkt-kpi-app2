@@ -67,7 +67,7 @@ export async function createRootCause(input: CreateRootCauseInput): Promise<Root
 export async function updateRootCause(
   rootCauseId: string,
   workspaceId: string,
-  updates: Partial<Pick<RootCause, 'root_cause_note' | 'root_cause_type_id' | 'validation_status'>>,
+  updates: Partial<Pick<RootCause, 'root_cause_note' | 'root_cause_type_id' | 'validation_status' | 'evidence'>>,
 ): Promise<RootCause> {
   const { data, error } = await supabase
     .from('root_causes')
